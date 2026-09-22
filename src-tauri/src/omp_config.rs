@@ -662,7 +662,8 @@ fn validate_provider(value: &Value) -> Result<(), AppError> {
     Ok(())
 }
 
-const OMP_EFFORT_LEVELS: [&str; 6] = ["minimal", "low", "medium", "high", "xhigh", "max"];
+pub(crate) const OMP_EFFORT_LEVELS: [&str; 6] =
+    ["minimal", "low", "medium", "high", "xhigh", "max"];
 
 pub(crate) fn prepare_omp_provider_config(config: &Value) -> Result<Value, AppError> {
     let mut config = config.clone();
@@ -769,6 +770,52 @@ fn write_thinking(model: &mut Map<String, Value>, kept: &[(&str, String)]) {
     thinking.insert("efforts".into(), efforts);
     thinking.insert("effortMap".into(), Value::Object(effort_map));
     model.insert("thinking".into(), Value::Object(thinking));
+    model.insert("reasoning".to_string(), Value::Bool(true));
+}
+
+#[allow(dead_code)] // library check does not compile the tests that call this
+pub(crate) fn omp_thinking_level_checks(model: &Value) -> [bool; 6] {
+    let map = model.get("thinkingLevelMap").and_then(Value::as_object);
+    let mut checked = [false; 6];
+    for (index, level) in OMP_EFFORT_LEVELS.iter().enumerate() {
+        checked[index] = map
+            .and_then(|values| values.get(*level))
+            .and_then(Value::as_str)
+            .is_some_and(|value| !value.is_empty());
+    }
+    checked
+}
+
+pub(crate) fn apply_omp_thinking_level_selection(
+    model: &mut Value,
+    checked: &[bool; 6],
+) -> Result<(), AppError> {
+    let object = model
+        .as_object_mut()
+        .ok_or_else(|| AppError::InvalidInput("Each Oh My Pi model must be an object".into()))?;
+    let previous = object
+        .get("thinkingLevelMap")
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
+    let mut map = serde_json::Map::new();
+    for (level, on) in OMP_EFFORT_LEVELS.iter().zip(checked.iter()) {
+        if !*on {
+            continue;
+        }
+        let value = previous
+            .get(*level)
+            .and_then(Value::as_str)
+            .filter(|text| !text.is_empty())
+            .unwrap_or(level);
+        map.insert((*level).to_string(), Value::String(value.to_string()));
+    }
+    if map.is_empty() {
+        object.remove("thinkingLevelMap");
+    } else {
+        object.insert("thinkingLevelMap".to_string(), Value::Object(map));
+    }
+    Ok(())
 }
 
 fn strip_legacy_effort_map(model: &mut Map<String, Value>) {
@@ -1085,6 +1132,7 @@ mod tests {
             "vendor-high"
         );
         assert_eq!(out["models"][0]["thinking"]["effortMap"]["max"], "max");
+        assert_eq!(out["models"][0]["reasoning"], true);
     }
 
     #[test]
@@ -1112,5 +1160,57 @@ mod tests {
             out["models"][0]["thinking"]["efforts"],
             serde_json::json!(["low"])
         );
+    }
+
+    #[test]
+    fn apply_thinking_selection_keeps_custom_map_values_and_drops_unchecked() {
+        let mut model = serde_json::json!({
+            "id": "claude-opus-5",
+            "thinkingLevelMap": { "high": "vendor-high", "xhigh": "" }
+        });
+        let mut checked = [false; 6];
+        checked[3] = true; // high
+        checked[5] = true; // max
+        apply_omp_thinking_level_selection(&mut model, &checked).unwrap();
+        assert_eq!(
+            model["thinkingLevelMap"],
+            serde_json::json!({ "high": "vendor-high", "max": "max" })
+        );
+        assert_eq!(
+            omp_thinking_level_checks(&model),
+            [false, false, false, true, false, true]
+        );
+
+        apply_omp_thinking_level_selection(&mut model, &[false; 6]).unwrap();
+        assert!(model.get("thinkingLevelMap").is_none());
+        assert_eq!(model["id"], "claude-opus-5");
+        assert_eq!(omp_thinking_level_checks(&model), [false; 6]);
+    }
+
+    #[test]
+    fn prepare_sets_reasoning_only_when_efforts_are_written() {
+        let with_levels = prepare_omp_provider_config(&serde_json::json!({
+            "models": [{
+                "id": "claude-opus-5",
+                "thinkingLevelMap": { "xhigh": "xhigh", "max": "max" }
+            }]
+        }))
+        .unwrap();
+        assert_eq!(with_levels["models"][0]["reasoning"], true);
+        assert_eq!(
+            with_levels["models"][0]["thinking"]["efforts"],
+            serde_json::json!(["xhigh", "max"])
+        );
+        assert_eq!(
+            with_levels["models"][0]["thinking"]["effortMap"]["max"],
+            "max"
+        );
+
+        let recognized = prepare_omp_provider_config(&serde_json::json!({
+            "models": [{ "id": "qwen3.7-max" }]
+        }))
+        .unwrap();
+        assert!(recognized["models"][0].get("reasoning").is_none());
+        assert!(recognized["models"][0].get("thinking").is_none());
     }
 }
