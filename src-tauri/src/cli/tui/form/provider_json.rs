@@ -777,23 +777,22 @@ impl ProviderAddFormState {
                 }
 
                 if is_native {
-                    let models_changed = match original_pi_settings
-                        .and_then(|settings| settings.get("models"))
-                    {
-                        Some(Value::Array(models)) => {
-                            if is_omp {
-                                models
+                    let models_changed =
+                        match original_pi_settings.and_then(|settings| settings.get("models")) {
+                            Some(Value::Array(models)) => {
+                                if is_omp {
+                                    models
                                     .iter()
                                     .cloned()
                                     .map(super::provider_state_loading::project_omp_model_for_form)
                                     .collect::<Vec<_>>()
                                     != self.openclaw_models
-                            } else {
-                                models != &self.openclaw_models
+                                } else {
+                                    models != &self.openclaw_models
+                                }
                             }
-                        }
-                        Some(_) | None => !self.openclaw_models.is_empty(),
-                    };
+                            Some(_) | None => !self.openclaw_models.is_empty(),
+                        };
                     if models_changed {
                         let models = if is_omp {
                             crate::omp_config::prepare_omp_provider_config(&json!({
