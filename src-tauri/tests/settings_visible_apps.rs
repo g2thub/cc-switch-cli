@@ -17,6 +17,7 @@ mod app_config {
         OpenClaw,
         Hermes,
         Pi,
+        Omp,
     }
 
     impl AppType {
@@ -29,6 +30,7 @@ mod app_config {
                 AppType::OpenClaw => "openclaw",
                 AppType::Hermes => "hermes",
                 AppType::Pi => "pi",
+                AppType::Omp => "omp",
             }
         }
     }
@@ -397,6 +399,7 @@ fn default_visible_apps_hide_gemini() {
             AppType::Hermes,
             AppType::OpenClaw,
             AppType::Pi,
+            AppType::Omp,
         ]
     );
     assert!(!visible.is_enabled_for(&AppType::Gemini));
@@ -434,6 +437,7 @@ fn set_visible_apps_persists_visible_apps_as_camel_case_json() {
             "openclaw": true,
             "hermes": true,
             "pi": false,
+            "omp": false,
         })
     );
 }
@@ -480,6 +484,7 @@ fn load_reads_valid_non_default_visible_apps_from_settings_json() {
             AppType::OpenCode,
             AppType::Hermes,
             AppType::Pi,
+            AppType::Omp,
         ]
     );
 }
@@ -662,7 +667,8 @@ fn load_normalizes_all_false_visible_apps_to_defaults() {
                 "opencode": false,
                 "openclaw": false,
                 "hermes": false,
-                "pi": false
+                "pi": false,
+                "omp": false
             }
         }),
     );
