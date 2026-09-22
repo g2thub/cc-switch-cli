@@ -662,6 +662,125 @@ fn validate_provider(value: &Value) -> Result<(), AppError> {
     Ok(())
 }
 
+const OMP_EFFORT_LEVELS: [&str; 6] = ["minimal", "low", "medium", "high", "xhigh", "max"];
+
+pub(crate) fn prepare_omp_provider_config(config: &Value) -> Result<Value, AppError> {
+    let mut config = config.clone();
+    let object = config.as_object_mut().ok_or_else(|| {
+        AppError::InvalidInput("Oh My Pi provider configuration must be an object".into())
+    })?;
+    object.remove("name");
+    if let Some(models) = object.get_mut("models").and_then(Value::as_array_mut) {
+        for model in models.iter_mut() {
+            normalize_omp_model(model)?;
+        }
+    }
+    Ok(config)
+}
+
+fn normalize_omp_model(model: &mut Value) -> Result<(), AppError> {
+    let object = model
+        .as_object_mut()
+        .ok_or_else(|| AppError::InvalidInput("Each Oh My Pi model must be an object".into()))?;
+    if object.contains_key("thinkingLevelMap") {
+        let raw = object.remove("thinkingLevelMap").unwrap_or(Value::Null);
+        let effort_map = parse_effort_map(&raw)?;
+        write_thinking(object, &effort_map);
+        strip_legacy_effort_map(object);
+        return Ok(());
+    }
+    let legacy = object
+        .get("compat")
+        .and_then(|compat| compat.get("reasoningEffortMap"))
+        .cloned();
+    let has_native = object
+        .get("thinking")
+        .and_then(Value::as_object)
+        .is_some_and(|thinking| {
+            thinking.get("mode").and_then(Value::as_str) == Some("effort")
+                && thinking.get("efforts").and_then(Value::as_array).is_some()
+        });
+    if !has_native {
+        if let Some(raw) = legacy {
+            let effort_map = parse_effort_map(&raw)?;
+            write_thinking(object, &effort_map);
+            strip_legacy_effort_map(object);
+        }
+    }
+    Ok(())
+}
+
+fn parse_effort_map(raw: &Value) -> Result<Vec<(&str, String)>, AppError> {
+    let Some(map) = raw.as_object() else {
+        return Err(AppError::InvalidInput(
+            "Oh My Pi thinking levels must be an object".into(),
+        ));
+    };
+    for key in map.keys() {
+        if !OMP_EFFORT_LEVELS.contains(&key.as_str()) {
+            return Err(AppError::InvalidInput(format!(
+                "Unsupported Oh My Pi thinking level '{key}'"
+            )));
+        }
+    }
+    let mut kept = Vec::new();
+    for level in OMP_EFFORT_LEVELS {
+        if let Some(value) = map.get(level) {
+            let Some(text) = value.as_str() else {
+                return Err(AppError::InvalidInput(format!(
+                    "Oh My Pi thinking level '{level}' must be a string"
+                )));
+            };
+            if !text.is_empty() {
+                kept.push((level, text.to_string()));
+            }
+        }
+    }
+    Ok(kept)
+}
+
+fn write_thinking(model: &mut Map<String, Value>, kept: &[(&str, String)]) {
+    let mut thinking = model
+        .get("thinking")
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
+    thinking.remove("mode");
+    thinking.remove("efforts");
+    thinking.remove("effortMap");
+    if kept.is_empty() {
+        if thinking.is_empty() {
+            model.remove("thinking");
+        } else {
+            model.insert("thinking".into(), Value::Object(thinking));
+        }
+        return;
+    }
+    let efforts = Value::Array(
+        kept.iter()
+            .map(|(level, _)| Value::String((*level).into()))
+            .collect(),
+    );
+    let mut effort_map = Map::new();
+    for (level, value) in kept {
+        effort_map.insert((*level).into(), Value::String(value.clone()));
+    }
+    thinking.insert("mode".into(), Value::String("effort".into()));
+    thinking.insert("efforts".into(), efforts);
+    thinking.insert("effortMap".into(), Value::Object(effort_map));
+    model.insert("thinking".into(), Value::Object(thinking));
+}
+
+fn strip_legacy_effort_map(model: &mut Map<String, Value>) {
+    let Some(compat) = model.get_mut("compat").and_then(Value::as_object_mut) else {
+        return;
+    };
+    compat.remove("reasoningEffortMap");
+    if compat.is_empty() {
+        model.remove("compat");
+    }
+}
+
 #[cfg(test)]
 pub(crate) mod test_support {
     use super::TEST_AGENT_DIR;
@@ -933,5 +1052,65 @@ mod tests {
             PathBuf::from("/default")
         )
         .is_err());
+    }
+
+    #[test]
+    fn prepare_strips_provider_name_and_maps_thinking_levels() {
+        let input = serde_json::json!({
+            "name": "Display",
+            "baseUrl": "https://api.example.com/v1",
+            "apiKey": "secret",
+            "api": "openai-completions",
+            "models": [{
+                "id": "m",
+                "name": "Model name",
+                "thinkingLevelMap": {
+                    "high": "vendor-high",
+                    "max": "max",
+                    "low": ""
+                }
+            }]
+        });
+        let out = super::prepare_omp_provider_config(&input).unwrap();
+        assert!(out.get("name").is_none());
+        assert_eq!(out["models"][0]["name"], "Model name");
+        assert!(out["models"][0].get("thinkingLevelMap").is_none());
+        assert_eq!(out["models"][0]["thinking"]["mode"], "effort");
+        assert_eq!(
+            out["models"][0]["thinking"]["efforts"],
+            serde_json::json!(["high", "max"])
+        );
+        assert_eq!(
+            out["models"][0]["thinking"]["effortMap"]["high"],
+            "vendor-high"
+        );
+        assert_eq!(out["models"][0]["thinking"]["effortMap"]["max"], "max");
+    }
+
+    #[test]
+    fn prepare_rejects_unknown_thinking_level() {
+        let input = serde_json::json!({
+            "baseUrl": "https://api.example.com/v1",
+            "apiKey": "secret",
+            "models": [{ "id": "m", "thinkingLevelMap": { "turbo": "turbo" } }]
+        });
+        assert!(super::prepare_omp_provider_config(&input).is_err());
+    }
+
+    #[test]
+    fn prepare_keeps_native_thinking_when_map_is_absent() {
+        let input = serde_json::json!({
+            "baseUrl": "https://api.example.com/v1",
+            "apiKey": "secret",
+            "models": [{
+                "id": "m",
+                "thinking": { "mode": "effort", "efforts": ["low"], "effortMap": { "low": "low" } }
+            }]
+        });
+        let out = super::prepare_omp_provider_config(&input).unwrap();
+        assert_eq!(
+            out["models"][0]["thinking"]["efforts"],
+            serde_json::json!(["low"])
+        );
     }
 }
