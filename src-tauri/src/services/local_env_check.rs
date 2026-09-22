@@ -29,6 +29,7 @@ pub enum LocalTool {
     Hermes,
     OpenClaw,
     Pi,
+    Omp,
 }
 
 impl LocalTool {
@@ -55,6 +56,7 @@ impl LocalTool {
             LocalTool::Hermes => "Hermes",
             LocalTool::OpenClaw => "OpenClaw",
             LocalTool::Pi => "Pi",
+            LocalTool::Omp => "Oh My Pi",
         }
     }
 
@@ -67,6 +69,7 @@ impl LocalTool {
             LocalTool::Hermes => "hermes",
             LocalTool::OpenClaw => "openclaw",
             LocalTool::Pi => "pi",
+            LocalTool::Omp => "omp",
         }
     }
 
@@ -79,6 +82,7 @@ impl LocalTool {
             LocalTool::Hermes => &["--version", "version"],
             LocalTool::OpenClaw => &["--version", "version"],
             LocalTool::Pi => &["--version"],
+            LocalTool::Omp => &["--version"],
         }
     }
 
@@ -106,6 +110,7 @@ impl LocalTool {
             AppType::Hermes => LocalTool::Hermes,
             AppType::OpenClaw => LocalTool::OpenClaw,
             AppType::Pi => LocalTool::Pi,
+            AppType::Omp => LocalTool::Omp,
         }
     }
 }

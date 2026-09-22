@@ -25,7 +25,7 @@ pub(crate) fn should_sync_live(app_type: &AppType) -> bool {
         // OpenClaw is considered initialized if ~/.openclaw (or override dir) exists.
         AppType::OpenClaw => get_openclaw_dir().exists(),
         // Pi live provider writes are owned by the revision-aware native service.
-        AppType::Pi => false,
+        AppType::Pi | AppType::Omp => false,
     }
 }
 

@@ -498,9 +498,12 @@ fn prompt_and_apply_provider_api_format(
     match app_type {
         AppType::Claude => prompt_and_apply_claude_api_format(app_type, provider),
         AppType::Codex => prompt_and_apply_codex_api_format(app_type, provider),
-        AppType::Gemini | AppType::OpenCode | AppType::Hermes | AppType::OpenClaw | AppType::Pi => {
-            Ok(())
-        }
+        AppType::Gemini
+        | AppType::OpenCode
+        | AppType::Hermes
+        | AppType::OpenClaw
+        | AppType::Pi
+        | AppType::Omp => Ok(()),
     }
 }
 
@@ -1441,6 +1444,34 @@ fn build_add_settings_config(
             }
             Ok(settings)
         }
+        AppType::Omp => {
+            let base_url = non_empty(args.base_url.clone())
+                .ok_or_else(|| add_missing_field_error("--base-url"))?;
+            if !crate::pi_config::is_valid_request_url(&base_url) {
+                return Err(AppError::InvalidInput(
+                    "Oh My Pi --base-url must be an absolute HTTP(S) URL".to_string(),
+                ));
+            }
+            let model =
+                non_empty(args.model.clone()).ok_or_else(|| add_missing_field_error("--model"))?;
+            let api = non_empty(args.api_format.clone())
+                .unwrap_or_else(|| "openai-completions".to_string());
+            if !crate::openclaw_config::OPENCLAW_API_PROTOCOLS.contains(&api.as_str()) {
+                return Err(add_invalid_api_format_error(
+                    &api,
+                    &crate::openclaw_config::OPENCLAW_API_PROTOCOLS.join("|"),
+                ));
+            }
+            let mut settings = serde_json::json!({
+                "baseUrl": base_url,
+                "api": api,
+                "models": [{ "id": model }],
+            });
+            if let Some(api_key) = non_empty(args.api_key.clone()) {
+                settings["apiKey"] = serde_json::json!(api_key);
+            }
+            Ok(settings)
+        }
         AppType::OpenCode | AppType::Hermes | AppType::OpenClaw => {
             let current = current.ok_or_else(|| add_additive_requires_config_error(app_type))?;
             let api_key = non_empty(args.api_key.clone());
@@ -1528,8 +1559,12 @@ fn apply_add_provider_api_format(
             };
             apply_codex_api_format(provider, format);
         }
-        AppType::Gemini | AppType::OpenCode | AppType::Hermes | AppType::OpenClaw | AppType::Pi => {
-        }
+        AppType::Gemini
+        | AppType::OpenCode
+        | AppType::Hermes
+        | AppType::OpenClaw
+        | AppType::Pi
+        | AppType::Omp => {}
     }
     Ok(())
 }

@@ -194,7 +194,7 @@ pub(super) fn render_providers(
             } else {
                 String::new()
             }
-        } else if matches!(app.app_type, AppType::OpenCode | AppType::Pi) {
+        } else if matches!(app.app_type, AppType::OpenCode | AppType::Pi | AppType::Omp) {
             if row.is_in_config {
                 "+".to_string()
             } else {

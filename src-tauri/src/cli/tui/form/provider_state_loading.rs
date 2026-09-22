@@ -28,7 +28,7 @@ pub(super) fn populate_form_from_provider(
         AppType::OpenCode => populate_opencode_form(form, provider),
         AppType::Hermes => populate_hermes_form(form, provider),
         AppType::OpenClaw => populate_openclaw_form(form, provider),
-        AppType::Pi => populate_openclaw_form(form, provider),
+        AppType::Pi | AppType::Omp => populate_openclaw_form(form, provider),
     }
     form.is_full_url = form.supports_full_url_mode()
         && provider

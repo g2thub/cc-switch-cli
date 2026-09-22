@@ -428,7 +428,8 @@ pub(super) fn remove_from_config(
         }
         crate::app_config::AppType::OpenCode
         | crate::app_config::AppType::Hermes
-        | crate::app_config::AppType::Pi => {
+        | crate::app_config::AppType::Pi
+        | crate::app_config::AppType::Omp => {
             let state = load_state()?;
             ProviderService::remove_from_live_config(&state, ctx.app.app_type.clone(), &id)?;
             ctx.app.push_toast(

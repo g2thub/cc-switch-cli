@@ -191,6 +191,7 @@ pub fn app_display_name(app: &AppType) -> &'static str {
         AppType::Hermes => "Hermes",
         AppType::OpenClaw => "OpenClaw",
         AppType::Pi => "Pi",
+        AppType::Omp => "Oh My Pi",
     }
 }
 
@@ -322,6 +323,7 @@ mod tests {
             hermes: true,
             openclaw: false,
             pi: false,
+            omp: false,
         };
         settings.visible_apps_settings = VisibleAppsSettings {
             mode: VisibleAppsMode::Auto,
@@ -365,6 +367,7 @@ mod tests {
             hermes: false,
             openclaw: true,
             pi: false,
+            omp: false,
         };
         settings.visible_apps_settings = VisibleAppsSettings {
             mode: VisibleAppsMode::Manual,
@@ -433,6 +436,7 @@ mod tests {
             hermes: true,
             openclaw: true,
             pi: false,
+            omp: false,
         };
         settings.visible_apps_settings = VisibleAppsSettings {
             mode: VisibleAppsMode::Auto,

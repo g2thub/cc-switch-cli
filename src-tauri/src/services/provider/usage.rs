@@ -476,7 +476,7 @@ impl ProviderService {
                     )
                 })
                 .map(|s| s.to_string()),
-            AppType::Pi => provider
+            AppType::Pi | AppType::Omp => provider
                 .settings_config
                 .get("apiKey")
                 .and_then(Value::as_str)
@@ -563,6 +563,7 @@ impl ProviderService {
                 .unwrap_or_default()
                 .to_string()),
             AppType::Pi => crate::pi_config::provider_base_url(&provider.settings_config),
+            AppType::Omp => crate::omp_config::provider_base_url(&provider.settings_config),
         }
     }
 

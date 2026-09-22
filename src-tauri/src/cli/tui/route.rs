@@ -108,11 +108,19 @@ impl NavItem {
         NavItem::Exit,
     ];
 
+    pub const OMP_ALL: [NavItem; 4] = [
+        NavItem::Main,
+        NavItem::Providers,
+        NavItem::Settings,
+        NavItem::Exit,
+    ];
+
     pub fn all_for_app(app_type: &AppType) -> &'static [NavItem] {
         match app_type {
             AppType::OpenClaw => &Self::OPENCLAW_ALL,
             AppType::Hermes => &Self::HERMES_ALL,
             AppType::Pi => &Self::PI_ALL,
+            AppType::Omp => &Self::OMP_ALL,
             _ => &Self::ALL,
         }
     }

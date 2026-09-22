@@ -408,7 +408,7 @@ impl ProxySnapshot {
             AppType::OpenCode => None,
             AppType::Hermes => None,
             AppType::OpenClaw => None,
-            AppType::Pi => None,
+            AppType::Pi | AppType::Omp => None,
         }
     }
 
@@ -1547,6 +1547,14 @@ fn load_providers_with_mode(
     let pi_default_provider_id = pi_state
         .as_ref()
         .and_then(|current| current.default_provider_id.clone());
+    let omp_live_ids = if matches!(app_type, AppType::Omp) {
+        crate::omp_config::read_omp_native_providers()?
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect::<HashSet<_>>()
+    } else {
+        HashSet::new()
+    };
     let openclaw_default_model = if matches!(app_type, AppType::OpenClaw) {
         crate::openclaw_config::get_default_model()?
     } else {
@@ -1578,12 +1586,14 @@ fn load_providers_with_mode(
                     AppType::Hermes => hermes_live_ids.contains(&id),
                     AppType::OpenClaw => openclaw_live_ids.contains(&id),
                     AppType::Pi => pi_live_ids.contains(&id),
+                    AppType::Omp => omp_live_ids.contains(&id),
                     _ => true,
                 },
                 is_saved: true,
                 is_default_model: match app_type {
                     AppType::Hermes => hermes_current_provider_id.as_deref() == Some(id.as_str()),
                     AppType::Pi => pi_default_provider_id.as_deref() == Some(id.as_str()),
+                    AppType::Omp => false,
                     _ => openclaw_primary_default_provider_id.as_deref() == Some(id.as_str()),
                 },
                 primary_model_id: extract_primary_model_id(
@@ -1648,6 +1658,7 @@ fn load_providers_with_mode(
         AppType::Hermes => hermes_live_ids,
         AppType::OpenClaw => openclaw_live_providers.keys().cloned().collect(),
         AppType::Pi => pi_live_ids,
+        AppType::Omp => omp_live_ids,
         _ => HashSet::new(),
     };
 
@@ -1742,6 +1753,7 @@ fn extract_api_url(settings_config: &Value, app_type: &AppType) -> Option<String
             .as_str()
             .map(|s| s.to_string()),
         AppType::Pi => crate::pi_config::provider_base_url(settings_config).ok(),
+        AppType::Omp => crate::omp_config::provider_base_url(settings_config).ok(),
     }
 }
 

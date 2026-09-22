@@ -944,7 +944,7 @@ fn model_fetch_target(
             request_headers: None,
             strategy: ProviderModelFetchStrategy::Bearer,
         }),
-        AppType::Pi => {
+        AppType::Pi | AppType::Omp => {
             let api = provider.settings_config.get("api").and_then(Value::as_str);
             let strategy = match api {
                 Some("anthropic-messages") => ProviderModelFetchStrategy::Anthropic,
@@ -1028,9 +1028,12 @@ fn default_one_off_model_fetch_strategy(app_type: &AppType) -> ProviderModelFetc
     match app_type {
         AppType::Claude => ProviderModelFetchStrategy::Anthropic,
         AppType::Gemini => ProviderModelFetchStrategy::GoogleApiKey,
-        AppType::Codex | AppType::OpenCode | AppType::Hermes | AppType::OpenClaw | AppType::Pi => {
-            ProviderModelFetchStrategy::Bearer
-        }
+        AppType::Codex
+        | AppType::OpenCode
+        | AppType::Hermes
+        | AppType::OpenClaw
+        | AppType::Pi
+        | AppType::Omp => ProviderModelFetchStrategy::Bearer,
     }
 }
 

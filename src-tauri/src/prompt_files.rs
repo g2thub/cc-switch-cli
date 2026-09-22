@@ -18,6 +18,11 @@ pub fn prompt_file_path(app: &AppType) -> Result<PathBuf, AppError> {
         AppType::Hermes => get_hermes_override_dir().unwrap_or_else(default_hermes_dir),
         AppType::OpenClaw => get_openclaw_override_dir().unwrap_or_else(default_openclaw_dir),
         AppType::Pi => crate::pi_config::get_pi_agent_dir()?,
+        AppType::Omp => {
+            return Err(AppError::InvalidInput(
+                "Oh My Pi does not use prompt files".into(),
+            ));
+        }
     };
 
     let filename = match app {
@@ -27,7 +32,7 @@ pub fn prompt_file_path(app: &AppType) -> Result<PathBuf, AppError> {
         AppType::OpenCode => "AGENTS.md",
         AppType::Hermes => "AGENTS.md",
         AppType::OpenClaw => "AGENTS.md",
-        AppType::Pi => "AGENTS.md",
+        AppType::Pi | AppType::Omp => "AGENTS.md",
     };
 
     Ok(base_dir.join(filename))

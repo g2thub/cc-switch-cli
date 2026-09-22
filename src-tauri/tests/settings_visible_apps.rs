@@ -414,6 +414,7 @@ fn set_visible_apps_persists_visible_apps_as_camel_case_json() {
         opencode: false,
         openclaw: true,
         pi: false,
+        omp: false,
         hermes: true,
     })
     .expect("persist visible apps");
@@ -467,6 +468,7 @@ fn load_reads_valid_non_default_visible_apps_from_settings_json() {
             opencode: true,
             openclaw: false,
             pi: true,
+            omp: true,
             hermes: true,
         }
     );
@@ -506,6 +508,7 @@ fn load_partial_visible_apps_object_uses_defaults_for_missing_keys() {
             opencode: true,
             openclaw: true,
             pi: true,
+            omp: true,
             hermes: true,
         }
     );
@@ -582,6 +585,7 @@ fn set_visible_apps_rejects_zero_selection() {
         opencode: false,
         openclaw: false,
         pi: false,
+        omp: false,
         hermes: false,
     })
     .expect_err("zero visible apps should be rejected");
@@ -605,6 +609,7 @@ fn update_settings_rejects_all_false_visible_apps() {
             opencode: false,
             openclaw: false,
             pi: false,
+            omp: false,
             hermes: false,
         },
         ..Default::default()
@@ -702,6 +707,7 @@ fn next_visible_app_wraps_and_skips_hidden_entries() {
         opencode: true,
         openclaw: true,
         pi: false,
+        omp: false,
         hermes: true,
     };
 

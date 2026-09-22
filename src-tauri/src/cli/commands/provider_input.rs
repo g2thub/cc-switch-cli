@@ -144,7 +144,9 @@ pub fn common_snippet_has_effective_config(
             .ok()
             .and_then(|value| value.as_object().cloned())
             .is_some_and(|obj| !obj.is_empty()),
-        AppType::OpenCode | AppType::Hermes | AppType::OpenClaw | AppType::Pi => false,
+        AppType::OpenCode | AppType::Hermes | AppType::OpenClaw | AppType::Pi | AppType::Omp => {
+            false
+        }
     }
 }
 
@@ -209,7 +211,7 @@ pub fn provider_add_template_choices(app_type: &AppType) -> Vec<ProviderAddTempl
                 label: "Google OAuth",
             },
         ],
-        AppType::OpenCode | AppType::Hermes | AppType::OpenClaw | AppType::Pi => {
+        AppType::OpenCode | AppType::Hermes | AppType::OpenClaw | AppType::Pi | AppType::Omp => {
             vec![ProviderAddTemplateChoice {
                 template: ProviderAddTemplate::Custom,
                 label: "Custom",
@@ -657,7 +659,7 @@ fn build_sponsor_template_settings_config(
                 })
             }
         }
-        AppType::Pi => Err(unsupported_template_error(ProviderAddTemplate::Custom)),
+        AppType::Pi | AppType::Omp => Err(unsupported_template_error(ProviderAddTemplate::Custom)),
     }
 }
 
@@ -713,7 +715,7 @@ pub fn apply_additive_template_field_overrides(
                 models_with_primary_override(current, model),
             )
         }
-        AppType::Pi => {
+        AppType::Pi | AppType::Omp => {
             let mut updated = current.clone();
             let object = updated.as_object_mut().ok_or_else(|| {
                 AppError::InvalidInput("Pi provider configuration must be an object".to_string())
@@ -3924,6 +3926,9 @@ pub fn prompt_settings_config(
             }
             Ok(SettingsConfigPromptResult::new(config))
         }
+        AppType::Omp => Err(AppError::InvalidInput(
+            "Oh My Pi providers are edited from the provider form".to_string(),
+        )),
     }
 }
 
@@ -4658,7 +4663,7 @@ pub fn display_provider_summary(provider: &Provider, app_type: &AppType) {
                 println!("  {}: {}", texts::model_label(), models.len());
             }
         }
-        AppType::Pi => {
+        AppType::Pi | AppType::Omp => {
             if provider.configured_api_key(app_type).is_some() {
                 println!(
                     "  {}: {}",

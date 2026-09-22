@@ -317,7 +317,10 @@ enum PreparedCodexAuthWrite {
 
 impl ProviderService {
     pub fn is_provider_key_app(app_type: &AppType) -> bool {
-        matches!(app_type, AppType::OpenClaw | AppType::Hermes | AppType::Pi)
+        matches!(
+            app_type,
+            AppType::OpenClaw | AppType::Hermes | AppType::Pi | AppType::Omp
+        )
     }
 
     pub fn is_valid_provider_key(value: &str) -> bool {
@@ -429,6 +432,10 @@ impl ProviderService {
                 .map(|(id, _)| id)
                 .collect(),
             AppType::Pi => crate::pi_config::read_pi_native_providers()?
+                .into_iter()
+                .map(|(id, _)| id)
+                .collect(),
+            AppType::Omp => crate::omp_config::read_omp_native_providers()?
                 .into_iter()
                 .map(|(id, _)| id)
                 .collect(),
@@ -1426,7 +1433,7 @@ impl ProviderService {
                 }
                 state.save()?;
             }
-            AppType::Pi => {}
+            AppType::Pi | AppType::Omp => {}
         }
         Ok(())
     }
@@ -1482,7 +1489,11 @@ impl ProviderService {
                 strict_current_provider_id,
                 old_snippet,
             ),
-            AppType::OpenCode | AppType::Hermes | AppType::OpenClaw | AppType::Pi => Ok(()),
+            AppType::OpenCode
+            | AppType::Hermes
+            | AppType::OpenClaw
+            | AppType::Pi
+            | AppType::Omp => Ok(()),
         };
 
         match result {
@@ -1612,7 +1623,11 @@ impl ProviderService {
             }
             AppType::Gemini => live_settings.get("env") != provider_settings.get("env"),
             AppType::Claude => live_settings != provider_settings,
-            AppType::OpenCode | AppType::Hermes | AppType::OpenClaw | AppType::Pi => false,
+            AppType::OpenCode
+            | AppType::Hermes
+            | AppType::OpenClaw
+            | AppType::Pi
+            | AppType::Omp => false,
         }
     }
 
@@ -1770,7 +1785,7 @@ impl ProviderService {
             AppType::OpenCode => Self::extract_opencode_common_config(settings_config),
             AppType::Hermes => Self::extract_opencode_common_config(settings_config),
             AppType::OpenClaw => Self::extract_openclaw_common_config(settings_config),
-            AppType::Pi => Ok(String::new()),
+            AppType::Pi | AppType::Omp => Ok(String::new()),
         }
     }
 
@@ -2477,7 +2492,7 @@ impl ProviderService {
             AppType::OpenCode => unreachable!("additive mode apps are handled earlier"),
             AppType::Hermes => unreachable!("additive mode apps are handled earlier"),
             AppType::OpenClaw => unreachable!("additive mode apps are handled earlier"),
-            AppType::Pi => unreachable!("Pi uses native provider import"),
+            AppType::Pi | AppType::Omp => unreachable!("Pi uses native provider import"),
         };
 
         let mut provider = Provider::with_id(
@@ -2617,7 +2632,7 @@ impl ProviderService {
                 }
                 crate::openclaw_config::read_openclaw_config()
             }
-            AppType::Pi => Err(AppError::InvalidInput(
+            AppType::Pi | AppType::Omp => Err(AppError::InvalidInput(
                 "Pi providers are read from models.json".to_string(),
             )),
         }
@@ -3035,7 +3050,9 @@ impl ProviderService {
             AppType::OpenCode => unreachable!("additive mode handled above"),
             AppType::Hermes => unreachable!("additive mode handled above"),
             AppType::OpenClaw => unreachable!("additive mode handled above"),
-            AppType::Pi => unreachable!("Pi switch is handled by the native provider service"),
+            AppType::Pi | AppType::Omp => {
+                unreachable!("Pi switch is handled by the native provider service")
+            }
         };
 
         Ok(PostCommitAction {
@@ -3254,7 +3271,7 @@ impl ProviderService {
                     .map_err(Self::normalize_openclaw_live_write_error)?;
                 Ok(PreparedLiveWrite::OpenClaw { models })
             }
-            AppType::Pi => Ok(PreparedLiveWrite::Noop),
+            AppType::Pi | AppType::Omp => Ok(PreparedLiveWrite::Noop),
         }
     }
 
@@ -3493,7 +3510,7 @@ impl ProviderService {
             AppType::OpenClaw => Err(AppError::Config(
                 "OpenClaw does not support proxy takeover backups".into(),
             )),
-            AppType::Pi => Err(AppError::Config(
+            AppType::Pi | AppType::Omp => Err(AppError::Config(
                 "Pi does not support proxy takeover backups".into(),
             )),
         }
@@ -3592,6 +3609,9 @@ impl ProviderService {
             }
             AppType::Pi => {
                 crate::pi_config::validate_provider_node(&provider.id, &provider.settings_config)?
+            }
+            AppType::Omp => {
+                crate::omp_config::validate_provider_node(&provider.id, &provider.settings_config)?
             }
         }
 
@@ -3793,7 +3813,9 @@ impl ProviderService {
             AppType::OpenClaw => {
                 let _ = provider_snapshot;
             }
-            AppType::Pi => unreachable!("Pi deletion is handled by the native provider service"),
+            AppType::Pi | AppType::Omp => {
+                unreachable!("Pi deletion is handled by the native provider service")
+            }
         }
 
         {

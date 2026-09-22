@@ -174,7 +174,7 @@ pub(super) fn capture_live_snapshot(app_type: &AppType) -> Result<LiveSnapshot, 
             let config_source = crate::openclaw_config::read_openclaw_config_source()?;
             Ok(LiveSnapshot::OpenClaw { config_source })
         }
-        AppType::Pi => Err(AppError::Config(
+        AppType::Pi | AppType::Omp => Err(AppError::Config(
             "Pi providers use the Pi provider service".to_string(),
         )),
     }

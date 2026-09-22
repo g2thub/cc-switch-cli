@@ -121,7 +121,7 @@ impl ProviderAddFormState {
         let is_codex = matches!(app_type, AppType::Codex);
         let is_gemini = matches!(app_type, AppType::Gemini);
         let openclaw_api_default = match app_type {
-            AppType::OpenClaw | AppType::Pi => OPENCLAW_DEFAULT_API_PROTOCOL,
+            AppType::OpenClaw | AppType::Pi | AppType::Omp => OPENCLAW_DEFAULT_API_PROTOCOL,
             _ => "@ai-sdk/openai-compatible",
         };
 
@@ -375,7 +375,11 @@ impl ProviderAddFormState {
                 .ok()
                 .and_then(|value| value.as_object().cloned())
                 .is_some_and(|env| !env.is_empty()),
-            AppType::OpenCode | AppType::Hermes | AppType::OpenClaw | AppType::Pi => false,
+            AppType::OpenCode
+            | AppType::Hermes
+            | AppType::OpenClaw
+            | AppType::Pi
+            | AppType::Omp => false,
         }
     }
 
@@ -431,7 +435,11 @@ impl ProviderAddFormState {
                     app_type, settings, &snippet,
                 )
             }
-            AppType::OpenCode | AppType::Hermes | AppType::OpenClaw | AppType::Pi => false,
+            AppType::OpenCode
+            | AppType::Hermes
+            | AppType::OpenClaw
+            | AppType::Pi
+            | AppType::Omp => false,
         }
     }
 
@@ -491,7 +499,7 @@ impl ProviderAddFormState {
 
         if matches!(
             self.app_type,
-            AppType::Hermes | AppType::OpenClaw | AppType::Pi
+            AppType::Hermes | AppType::OpenClaw | AppType::Pi | AppType::Omp
         ) && self.copy_source_id.is_none()
         {
             fields.insert(0, ProviderAddField::Id);
@@ -573,7 +581,7 @@ impl ProviderAddFormState {
                 fields.push(ProviderAddField::OpenClawUserAgent);
                 fields.push(ProviderAddField::OpenClawModels);
             }
-            AppType::Pi => {
+            AppType::Pi | AppType::Omp => {
                 fields.push(ProviderAddField::OpenClawApiProtocol);
                 fields.push(ProviderAddField::OpenCodeApiKey);
                 fields.push(ProviderAddField::OpenCodeBaseUrl);
@@ -1193,7 +1201,8 @@ impl ProviderAddFormState {
             | AppType::OpenCode
             | AppType::Hermes
             | AppType::OpenClaw
-            | AppType::Pi => {}
+            | AppType::Pi
+            | AppType::Omp => {}
         }
         Ok(())
     }
@@ -1425,7 +1434,8 @@ impl ProviderAddFormState {
             | AppType::OpenCode
             | AppType::Hermes
             | AppType::OpenClaw
-            | AppType::Pi => false,
+            | AppType::Pi
+            | AppType::Omp => false,
         }
     }
 
@@ -2232,7 +2242,9 @@ impl ProviderAddFormState {
             AppType::Codex => self.codex_base_url.value.clone(),
             AppType::Gemini => self.gemini_base_url.value.clone(),
             AppType::Hermes => self.hermes_base_url.value.clone(),
-            AppType::OpenCode | AppType::OpenClaw => self.opencode_base_url.value.clone(),
+            AppType::OpenCode | AppType::OpenClaw | AppType::Omp => {
+                self.opencode_base_url.value.clone()
+            }
             AppType::Pi => {
                 let provider = self.to_provider_json_value();
                 crate::pi_config::provider_base_url(&provider["settingsConfig"]).unwrap_or_default()
@@ -2261,7 +2273,7 @@ impl ProviderAddFormState {
             AppType::Codex => (&self.codex_api_key.value, &self.codex_base_url.value),
             AppType::Gemini => (&self.gemini_api_key.value, &self.gemini_base_url.value),
             AppType::Hermes => (&self.hermes_api_key.value, &self.hermes_base_url.value),
-            AppType::OpenCode | AppType::OpenClaw => {
+            AppType::OpenCode | AppType::OpenClaw | AppType::Omp => {
                 (&self.opencode_api_key.value, &self.opencode_base_url.value)
             }
             AppType::Pi => unreachable!("Pi credentials are resolved above"),
@@ -2518,7 +2530,8 @@ impl ProviderAddFormState {
             | AppType::OpenCode
             | AppType::Hermes
             | AppType::OpenClaw
-            | AppType::Pi => false,
+            | AppType::Pi
+            | AppType::Omp => false,
         }
     }
 
@@ -3076,7 +3089,10 @@ impl ProviderAddFormState {
     }
 
     pub fn apply_openclaw_models_value(&mut self, models_value: Value) -> Result<(), String> {
-        if !matches!(self.app_type, AppType::OpenClaw | AppType::Pi) {
+        if !matches!(
+            self.app_type,
+            AppType::OpenClaw | AppType::Pi | AppType::Omp
+        ) {
             return Ok(());
         }
         if !models_value.is_array() {
