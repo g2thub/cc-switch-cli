@@ -2242,12 +2242,15 @@ impl ProviderAddFormState {
             AppType::Codex => self.codex_base_url.value.clone(),
             AppType::Gemini => self.gemini_base_url.value.clone(),
             AppType::Hermes => self.hermes_base_url.value.clone(),
-            AppType::OpenCode | AppType::OpenClaw | AppType::Omp => {
-                self.opencode_base_url.value.clone()
-            }
+            AppType::OpenCode | AppType::OpenClaw => self.opencode_base_url.value.clone(),
             AppType::Pi => {
                 let provider = self.to_provider_json_value();
                 crate::pi_config::provider_base_url(&provider["settingsConfig"]).unwrap_or_default()
+            }
+            AppType::Omp => {
+                let provider = self.to_provider_json_value();
+                crate::omp_config::provider_base_url(&provider["settingsConfig"])
+                    .unwrap_or_default()
             }
         }
     }
@@ -2260,7 +2263,7 @@ impl ProviderAddFormState {
             );
         }
 
-        if matches!(self.app_type, AppType::Pi) {
+        if matches!(self.app_type, AppType::Pi | AppType::Omp) {
             let base_url = self.current_provider_base_url();
             return (
                 Self::usage_query_comment_value(&self.opencode_api_key.value),
@@ -2273,10 +2276,12 @@ impl ProviderAddFormState {
             AppType::Codex => (&self.codex_api_key.value, &self.codex_base_url.value),
             AppType::Gemini => (&self.gemini_api_key.value, &self.gemini_base_url.value),
             AppType::Hermes => (&self.hermes_api_key.value, &self.hermes_base_url.value),
-            AppType::OpenCode | AppType::OpenClaw | AppType::Omp => {
+            AppType::OpenCode | AppType::OpenClaw => {
                 (&self.opencode_api_key.value, &self.opencode_base_url.value)
             }
-            AppType::Pi => unreachable!("Pi credentials are resolved above"),
+            AppType::Pi | AppType::Omp => {
+                unreachable!("Pi and OMP credentials are resolved above")
+            }
         };
         (
             Self::usage_query_comment_value(api_key),

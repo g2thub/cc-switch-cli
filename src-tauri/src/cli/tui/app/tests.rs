@@ -5421,6 +5421,59 @@ mod tests {
     }
 
     #[test]
+    fn provider_omp_models_fetch_uses_native_protocol_and_headers() {
+        let mut app = App::new(Some(AppType::Omp));
+        app.route = Route::Providers;
+        app.focus = Focus::Content;
+        let provider = Provider::with_id(
+            "omp-native".to_string(),
+            "Display".to_string(),
+            json!({
+                "apiKey": "omp-secret",
+                "api": "anthropic-messages",
+                "baseUrl": "https://omp.example.test/v1",
+                "headers": { "X-Custom": "custom-value" },
+                "models": [{ "id": "existing" }]
+            }),
+            None,
+        );
+        let mut form = ProviderAddFormState::from_provider(AppType::Omp, &provider);
+        form.focus = FormFocus::Fields;
+        form.field_idx = form
+            .fields()
+            .iter()
+            .position(|field| *field == ProviderAddField::OpenClawModels)
+            .expect("OMP models field");
+        app.form = Some(FormState::ProviderAdd(form));
+
+        let action = app.on_key(key(KeyCode::Char('f')), &data());
+        let Action::ProviderModelFetch {
+            base_url,
+            api_key,
+            api_protocol,
+            request_headers,
+            field,
+            ..
+        } = action
+        else {
+            panic!("expected OMP model fetch action, got {action:?}");
+        };
+        assert_eq!(base_url, "https://omp.example.test/v1");
+        assert_eq!(api_key, None, "Anthropic auth is carried by x-api-key");
+        assert_eq!(api_protocol.as_deref(), Some("anthropic-messages"));
+        assert_eq!(field, ProviderAddField::OpenClawModels);
+        let headers = request_headers.expect("native request headers");
+        assert_eq!(
+            headers.get("X-Custom").map(String::as_str),
+            Some("custom-value")
+        );
+        assert_eq!(
+            headers.get("x-api-key").map(String::as_str),
+            Some("omp-secret")
+        );
+    }
+
+    #[test]
     fn provider_pi_model_fetch_selection_adds_a_model_entry() {
         let mut app = App::new(Some(AppType::Pi));
         app.form = Some(FormState::ProviderAdd(ProviderAddFormState::new(

@@ -324,10 +324,14 @@ impl App {
                 Some(self.handle_provider_model_fetch(selected))
             }
             KeyCode::Char('f') if selected == ProviderAddField::OpenClawModels => {
-                let is_pi = self.form.as_ref().is_some_and(|form| {
-                    matches!(form, FormState::ProviderAdd(provider) if provider.app_type == AppType::Pi)
+                let fetches_native_models = self.form.as_ref().is_some_and(|form| {
+                    matches!(
+                        form,
+                        FormState::ProviderAdd(provider)
+                            if matches!(provider.app_type, AppType::Pi | AppType::Omp)
+                    )
                 });
-                is_pi.then(|| self.handle_provider_model_fetch(selected))
+                fetches_native_models.then(|| self.handle_provider_model_fetch(selected))
             }
             KeyCode::Char('f')
                 if matches!(
@@ -1573,37 +1577,40 @@ impl App {
             ProviderAddField::GeminiModel => provider.gemini_base_url.value.clone(),
             ProviderAddField::OpenCodeModelId => provider.opencode_base_url.value.clone(),
             ProviderAddField::HermesModels => provider.hermes_base_url.value.clone(),
-            ProviderAddField::OpenClawModels if matches!(provider.app_type, AppType::Pi) => {
+            ProviderAddField::OpenClawModels
+                if matches!(provider.app_type, AppType::Pi | AppType::Omp) =>
+            {
                 provider.current_provider_base_url()
             }
             ProviderAddField::OpenClawModels => provider.opencode_base_url.value.clone(),
             _ => String::new(),
         };
-        let (api_protocol, mut request_headers) =
-            if selected == ProviderAddField::OpenClawModels && provider.app_type == AppType::Pi {
-                let settings = provider.to_provider_json_value()["settingsConfig"].clone();
-                let protocol = settings
-                    .get("api")
-                    .and_then(Value::as_str)
-                    .map(str::to_string);
-                let headers = settings
-                    .get("headers")
-                    .and_then(Value::as_object)
-                    .map(|headers| {
-                        headers
-                            .iter()
-                            .filter_map(|(name, value)| {
-                                value
-                                    .as_str()
-                                    .map(|value| (name.clone(), value.to_string()))
-                            })
-                            .collect::<std::collections::BTreeMap<_, _>>()
-                    })
-                    .filter(|headers| !headers.is_empty());
-                (protocol, headers)
-            } else {
-                (None, None)
-            };
+        let (api_protocol, mut request_headers) = if selected == ProviderAddField::OpenClawModels
+            && matches!(provider.app_type, AppType::Pi | AppType::Omp)
+        {
+            let settings = provider.to_provider_json_value()["settingsConfig"].clone();
+            let protocol = settings
+                .get("api")
+                .and_then(Value::as_str)
+                .map(str::to_string);
+            let headers = settings
+                .get("headers")
+                .and_then(Value::as_object)
+                .map(|headers| {
+                    headers
+                        .iter()
+                        .filter_map(|(name, value)| {
+                            value
+                                .as_str()
+                                .map(|value| (name.clone(), value.to_string()))
+                        })
+                        .collect::<std::collections::BTreeMap<_, _>>()
+                })
+                .filter(|headers| !headers.is_empty());
+            (protocol, headers)
+        } else {
+            (None, None)
+        };
         if api_protocol.as_deref() == Some("anthropic-messages") {
             if let Some(key) = api_key.take() {
                 request_headers
