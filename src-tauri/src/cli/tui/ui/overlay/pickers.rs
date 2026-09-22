@@ -80,6 +80,87 @@ pub(super) fn render_codex_reasoning_picker_overlay(
     frame.render_stateful_widget(list, body_area, &mut state);
 }
 
+fn omp_thinking_model_label(model: &serde_json::Value, index: usize) -> String {
+    model
+        .get("id")
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|id| !id.is_empty())
+        .map(ToString::to_string)
+        .unwrap_or_else(|| format!("#{}", index + 1))
+}
+
+pub(super) fn render_omp_thinking_picker_overlay(
+    frame: &mut Frame<'_>,
+    app: &App,
+    content_area: Rect,
+    theme: &theme::Theme,
+    overlay: &Overlay,
+) {
+    let mut keys = vec![("↑↓", texts::tui_key_select())];
+    let (title, selected, items): (_, _, Vec<ListItem<'_>>) = match overlay {
+        Overlay::OmpThinkingModelPicker { selected } => {
+            let items = app
+                .form
+                .as_ref()
+                .and_then(|form| match form {
+                    FormState::ProviderAdd(provider) => Some(&provider.openclaw_models),
+                    _ => None,
+                })
+                .map(|models| {
+                    models
+                        .iter()
+                        .enumerate()
+                        .map(|(index, model)| ListItem::new(omp_thinking_model_label(model, index)))
+                        .collect()
+                })
+                .unwrap_or_default();
+            (texts::tui_omp_thinking_model(), *selected, items)
+        }
+        Overlay::OmpThinkingLevelsPicker {
+            selected, checked, ..
+        } => {
+            keys.push(("Space", texts::tui_key_toggle()));
+            let items = crate::omp_config::OMP_EFFORT_LEVELS
+                .iter()
+                .zip(checked)
+                .map(|(level, enabled)| {
+                    let marker = if *enabled {
+                        texts::tui_marker_active()
+                    } else {
+                        texts::tui_marker_inactive()
+                    };
+                    ListItem::new(format!("{marker}  {level}"))
+                })
+                .collect();
+            (texts::tui_omp_thinking_levels(), *selected, items)
+        }
+        _ => return,
+    };
+    keys.extend([
+        ("Enter", texts::tui_key_apply()),
+        ("Esc", texts::tui_key_cancel()),
+    ]);
+    let body_area = overlay_frame(
+        frame,
+        content_area,
+        theme,
+        title,
+        &keys,
+        OverlaySize::FitRows {
+            width: 58,
+            body_rows: items.len() as u16,
+        },
+        overlay_border_style(theme, false),
+    );
+    let mut state = ListState::default();
+    state.select(Some(selected.min(items.len().saturating_sub(1))));
+    let list = List::new(items)
+        .highlight_style(selection_style(theme))
+        .highlight_symbol(highlight_symbol(theme));
+    frame.render_stateful_widget(list, body_area, &mut state);
+}
+
 pub(super) fn render_claude_model_picker_overlay(
     frame: &mut Frame<'_>,
     app: &App,

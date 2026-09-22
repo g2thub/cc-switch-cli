@@ -93,6 +93,15 @@ pub(crate) fn render_overlay(
                 &app.overlay,
             )
         }
+        Overlay::OmpThinkingModelPicker { .. } | Overlay::OmpThinkingLevelsPicker { .. } => {
+            super::pickers::render_omp_thinking_picker_overlay(
+                frame,
+                app,
+                content_area,
+                theme,
+                &app.overlay,
+            )
+        }
         Overlay::UserAgentPicker { selected } => super::pickers::render_user_agent_picker_overlay(
             frame,
             app,

@@ -339,6 +339,20 @@ impl App {
                 });
                 fetches_native_models.then(|| self.handle_provider_model_fetch(selected))
             }
+            KeyCode::Char('t') if selected == ProviderAddField::OpenClawModels => {
+                let Some(FormState::ProviderAdd(provider)) = self.form.as_ref() else {
+                    return None;
+                };
+                if !matches!(provider.app_type, AppType::Omp) {
+                    return None;
+                }
+                if provider.openclaw_models.is_empty() {
+                    self.push_toast(texts::tui_omp_thinking_needs_model(), ToastKind::Info);
+                    return Some(Action::None);
+                }
+                self.overlay = Overlay::OmpThinkingModelPicker { selected: 0 };
+                Some(Action::None)
+            }
             KeyCode::Char('f')
                 if matches!(
                     selected,

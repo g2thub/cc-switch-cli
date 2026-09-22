@@ -4692,6 +4692,14 @@ pub enum Overlay {
         selected: usize,
         checked: [bool; 8],
     },
+    OmpThinkingModelPicker {
+        selected: usize,
+    },
+    OmpThinkingLevelsPicker {
+        model_index: usize,
+        selected: usize,
+        checked: [bool; 6],
+    },
     CodexDefaultReasoningPicker {
         row: usize,
         selected: usize,
@@ -4943,6 +4951,8 @@ impl Overlay {
                 | Overlay::FailoverQueueManager { .. }
                 | Overlay::ClaudeApiFormatPicker { .. }
                 | Overlay::CodexReasoningLevelsPicker { .. }
+                | Overlay::OmpThinkingModelPicker { .. }
+                | Overlay::OmpThinkingLevelsPicker { .. }
                 | Overlay::CodexDefaultReasoningPicker { .. }
                 | Overlay::UserAgentPicker { .. }
                 | Overlay::ExternalEditorPicker { .. }
@@ -4992,6 +5002,8 @@ impl Overlay {
             | Overlay::FailoverQueueManager { .. }
             | Overlay::ClaudeApiFormatPicker { .. }
             | Overlay::CodexReasoningLevelsPicker { .. }
+            | Overlay::OmpThinkingModelPicker { .. }
+            | Overlay::OmpThinkingLevelsPicker { .. }
             | Overlay::CodexDefaultReasoningPicker { .. }
             | Overlay::UserAgentPicker { .. }
             | Overlay::ExternalEditorPicker { .. }

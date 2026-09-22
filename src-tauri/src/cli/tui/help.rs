@@ -112,6 +112,9 @@ fn current_help_target(app: &App) -> HelpTarget {
             Overlay::CodexReasoningLevelsPicker { .. } => HelpTarget::CodexModelCatalogField {
                 field: CodexModelCatalogField::ReasoningLevels,
             },
+            Overlay::OmpThinkingModelPicker { .. } | Overlay::OmpThinkingLevelsPicker { .. } => {
+                provider_field_overlay_target(app, ProviderAddField::OpenClawModels)
+            }
             Overlay::CodexDefaultReasoningPicker { .. } => HelpTarget::CodexModelCatalogField {
                 field: CodexModelCatalogField::DefaultReasoningLevel,
             },
@@ -893,13 +896,23 @@ fn provider_field_help(app_type: AppType, field: ProviderAddField) -> HelpConten
                 "Controls whether requests include the default User-Agent. Some providers use it to identify the client.",
             ),
         ),
-        ProviderAddField::OpenClawModels => HelpContent::new(
-            texts::tui_label_openclaw_models(),
-            help_lines(
-                "编辑 OpenClaw/Pi/OMP 模型列表。Pi 和 OMP 聚焦此项时按 f 从供应商端点拉取模型，选中的 id 会追加到模型数组。",
-                "Edits OpenClaw/Pi/OMP model entries. On Pi and OMP, press f to fetch from the provider endpoint; the chosen id is appended to the model array.",
-            ),
-        ),
+        ProviderAddField::OpenClawModels => {
+            let zh = "编辑 OpenClaw/Pi/OMP 模型列表。Pi 和 OMP 聚焦此项时按 f 从供应商端点拉取模型，选中的 id 会追加到模型数组。";
+            let en = "Edits OpenClaw/Pi/OMP model entries. On Pi and OMP, press f to fetch from the provider endpoint; the chosen id is appended to the model array.";
+            let (zh, en) = if matches!(app_type, AppType::Omp) {
+                (
+                    format!(
+                        "{zh}聚焦此项时按 t 为某个模型勾选思考档位：minimal、low、medium、high、xhigh、max。全不选则不写 thinking，OMP 继续用识别结果（自定义网关上的 Claude 通常最高到 xhigh，Qwen 通常到 high）。只要勾了任意一档，OMP 就只显示勾中的这些档，不会在识别结果后面追加；想在原有档位上多一个 max，必须把要保留的档一起勾上。保存后这些档写入 thinking.efforts / effortMap，并设置 reasoning=true，否则 OMP 会丢弃手写档位。"
+                    ),
+                    format!(
+                        "{en} Press t on this field to choose thinking levels for one model: minimal, low, medium, high, xhigh, max. Leaving them all off writes no thinking block, so OMP keeps the levels it recognized (custom-gateway Claude usually stops at xhigh, Qwen at high). Any checked level replaces that recognized list instead of extending it; to add max on top of the recognized levels, check the levels you still want as well. Save writes thinking.efforts / effortMap and sets reasoning=true, which OMP requires before it will honor a handwritten list."
+                    ),
+                )
+            } else {
+                (zh.to_string(), en.to_string())
+            };
+            HelpContent::new(texts::tui_label_openclaw_models(), help_lines(&zh, &en))
+        }
         ProviderAddField::OpenCodeModelContextLimit => HelpContent::new(
             texts::tui_label_context_limit(),
             help_lines(

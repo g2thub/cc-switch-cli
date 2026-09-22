@@ -12806,6 +12806,35 @@ fn omp_models_key_bar_advertises_fetch_and_openclaw_does_not() {
 }
 
 #[test]
+fn omp_models_key_bar_advertises_thinking_levels_only_for_omp() {
+    let omp = super::add_form_key_items(
+        FormFocus::Fields,
+        false,
+        Some(ProviderAddField::OpenClawModels),
+        &AppType::Omp,
+    );
+    assert_eq!(
+        omp.iter()
+            .find(|(key, _)| *key == "t")
+            .map(|(_, label)| *label),
+        Some(texts::tui_key_thinking_levels())
+    );
+
+    for app_type in [AppType::Pi, AppType::OpenClaw] {
+        let keys = super::add_form_key_items(
+            FormFocus::Fields,
+            false,
+            Some(ProviderAddField::OpenClawModels),
+            &app_type,
+        );
+        assert!(
+            keys.iter().all(|(key, _)| *key != "t"),
+            "{app_type:?} {keys:?}"
+        );
+    }
+}
+
+#[test]
 fn provider_template_field_key_bar_advertises_select() {
     let _lang = use_test_language(Language::English);
     let keys = super::add_form_key_items(

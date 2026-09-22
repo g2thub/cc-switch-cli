@@ -5540,6 +5540,137 @@ mod tests {
     }
 
     #[test]
+    fn provider_omp_thinking_picker_writes_max_and_keeps_custom_map_value() {
+        let mut app = App::new(Some(AppType::Omp));
+        let mut form = ProviderAddFormState::new(AppType::Omp);
+        form.focus = FormFocus::Fields;
+        form.openclaw_models = vec![
+            serde_json::json!({
+                "id": "claude-opus-5",
+                "thinkingLevelMap": { "high": "vendor-high" }
+            }),
+            serde_json::json!({ "id": "qwen3.7-max" }),
+        ];
+        form.field_idx = form
+            .fields()
+            .iter()
+            .position(|field| *field == ProviderAddField::OpenClawModels)
+            .expect("OMP models field");
+        app.form = Some(FormState::ProviderAdd(form));
+
+        assert!(matches!(
+            app.on_key(key(KeyCode::Char('t')), &data()),
+            Action::None
+        ));
+        assert!(matches!(
+            app.overlay,
+            Overlay::OmpThinkingModelPicker { selected: 0 }
+        ));
+
+        assert!(matches!(
+            app.on_key(key(KeyCode::Down), &data()),
+            Action::None
+        ));
+        assert!(matches!(
+            app.on_key(key(KeyCode::Enter), &data()),
+            Action::None
+        ));
+        match &app.overlay {
+            Overlay::OmpThinkingLevelsPicker {
+                model_index,
+                checked,
+                ..
+            } => {
+                assert_eq!(*model_index, 1);
+                assert_eq!(*checked, [false; 6]);
+            }
+            other => panic!("expected level picker, got {other:?}"),
+        }
+
+        app.on_key(key(KeyCode::Esc), &data());
+        assert!(matches!(app.overlay, Overlay::None));
+        app.on_key(key(KeyCode::Char('t')), &data());
+        app.on_key(key(KeyCode::Enter), &data());
+        let Overlay::OmpThinkingLevelsPicker { checked, .. } = &app.overlay else {
+            panic!("expected claude level picker");
+        };
+        assert_eq!(
+            checked,
+            &[false, false, false, true, false, false],
+            "only high is currently mapped"
+        );
+
+        for _ in 0..5 {
+            app.on_key(key(KeyCode::Down), &data());
+        }
+        app.on_key(key(KeyCode::Char(' ')), &data());
+        app.on_key(key(KeyCode::Enter), &data());
+        assert!(matches!(app.overlay, Overlay::None));
+
+        let Some(FormState::ProviderAdd(form)) = app.form.as_ref() else {
+            panic!("expected provider form");
+        };
+        assert_eq!(
+            form.openclaw_models[0]["thinkingLevelMap"],
+            serde_json::json!({ "high": "vendor-high", "max": "max" })
+        );
+        assert!(form.openclaw_models[1].get("thinkingLevelMap").is_none());
+        let settings = form.to_provider_json_value()["settingsConfig"].clone();
+        assert_eq!(settings["models"][0]["reasoning"], true);
+        assert_eq!(
+            settings["models"][0]["thinking"]["efforts"],
+            serde_json::json!(["high", "max"])
+        );
+        assert_eq!(
+            settings["models"][0]["thinking"]["effortMap"]["high"],
+            "vendor-high"
+        );
+        assert_eq!(settings["models"][0]["thinking"]["effortMap"]["max"], "max");
+        assert!(settings["models"][1].get("thinking").is_none());
+        assert!(settings["models"][1].get("reasoning").is_none());
+    }
+
+    #[test]
+    fn provider_omp_thinking_picker_with_no_models_does_not_open() {
+        let mut app = App::new(Some(AppType::Omp));
+        let mut form = ProviderAddFormState::new(AppType::Omp);
+        form.focus = FormFocus::Fields;
+        form.field_idx = form
+            .fields()
+            .iter()
+            .position(|field| *field == ProviderAddField::OpenClawModels)
+            .expect("OMP models field");
+        app.form = Some(FormState::ProviderAdd(form));
+
+        assert!(matches!(
+            app.on_key(key(KeyCode::Char('t')), &data()),
+            Action::None
+        ));
+        assert!(matches!(app.overlay, Overlay::None));
+        assert_eq!(
+            app.toast.as_ref().map(|toast| toast.message.as_str()),
+            Some(texts::tui_omp_thinking_needs_model())
+        );
+    }
+
+    #[test]
+    fn provider_pi_models_field_ignores_thinking_shortcut() {
+        let mut app = App::new(Some(AppType::Pi));
+        let mut form = ProviderAddFormState::new(AppType::Pi);
+        form.focus = FormFocus::Fields;
+        form.openclaw_models = vec![serde_json::json!({ "id": "m" })];
+        form.field_idx = form
+            .fields()
+            .iter()
+            .position(|field| *field == ProviderAddField::OpenClawModels)
+            .expect("Pi models field");
+        app.form = Some(FormState::ProviderAdd(form));
+
+        let action = app.on_key(key(KeyCode::Char('t')), &data());
+        assert!(matches!(app.overlay, Overlay::None), "{action:?}");
+    }
+
+    #[test]
     fn pi_system_prompt_edit_uses_the_loaded_native_revision() {
         let mut app = App::new(Some(AppType::Pi));
         let mut data = UiData::default();

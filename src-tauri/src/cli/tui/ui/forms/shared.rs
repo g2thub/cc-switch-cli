@@ -93,6 +93,9 @@ pub(crate) fn add_form_key_items(
                     && matches!(app_type, AppType::Pi | AppType::Omp)
                 {
                     keys.insert(0, ("f", texts::tui_key_fetch_model()));
+                    if matches!(app_type, AppType::Omp) {
+                        keys.insert(1, ("t", texts::tui_key_thinking_levels()));
+                    }
                 }
             }
         }

@@ -143,6 +143,114 @@ impl App {
         Some(Action::None)
     }
 
+    fn handle_omp_thinking_picker_key(&mut self, key: KeyEvent) -> Option<Action> {
+        if !matches!(
+            self.overlay,
+            Overlay::OmpThinkingModelPicker { .. } | Overlay::OmpThinkingLevelsPicker { .. }
+        ) {
+            return None;
+        }
+
+        match key.code {
+            KeyCode::Up => {
+                if let Overlay::OmpThinkingModelPicker { selected }
+                | Overlay::OmpThinkingLevelsPicker { selected, .. } = &mut self.overlay
+                {
+                    *selected = selected.saturating_sub(1);
+                }
+            }
+            KeyCode::Down => {
+                let len = match &self.overlay {
+                    Overlay::OmpThinkingModelPicker { .. } => self
+                        .form
+                        .as_ref()
+                        .and_then(|form| match form {
+                            FormState::ProviderAdd(provider) => {
+                                Some(provider.openclaw_models.len())
+                            }
+                            _ => None,
+                        })
+                        .unwrap_or(0),
+                    Overlay::OmpThinkingLevelsPicker { .. } => {
+                        crate::omp_config::OMP_EFFORT_LEVELS.len()
+                    }
+                    _ => 0,
+                };
+                if let Overlay::OmpThinkingModelPicker { selected }
+                | Overlay::OmpThinkingLevelsPicker { selected, .. } = &mut self.overlay
+                {
+                    *selected = selected.saturating_add(1).min(len.saturating_sub(1));
+                }
+            }
+            KeyCode::Char(' ') => {
+                if let Overlay::OmpThinkingLevelsPicker {
+                    selected, checked, ..
+                } = &mut self.overlay
+                {
+                    if let Some(enabled) = checked.get_mut(*selected) {
+                        *enabled = !*enabled;
+                    }
+                }
+            }
+            KeyCode::Esc => self.overlay = Overlay::None,
+            KeyCode::Enter => self.confirm_omp_thinking_picker(),
+            _ => {}
+        }
+        Some(Action::None)
+    }
+
+    fn confirm_omp_thinking_picker(&mut self) {
+        match &self.overlay {
+            Overlay::OmpThinkingModelPicker { selected } => {
+                let selected = *selected;
+                let checked = self.form.as_ref().and_then(|form| match form {
+                    FormState::ProviderAdd(provider) => provider
+                        .openclaw_models
+                        .get(selected)
+                        .map(crate::omp_config::omp_thinking_level_checks),
+                    _ => None,
+                });
+                self.overlay = match checked {
+                    Some(checked) => Overlay::OmpThinkingLevelsPicker {
+                        model_index: selected,
+                        selected: 0,
+                        checked,
+                    },
+                    None => Overlay::None,
+                };
+            }
+            Overlay::OmpThinkingLevelsPicker {
+                model_index,
+                checked,
+                ..
+            } => {
+                let model_index = *model_index;
+                let checked = *checked;
+                let error = match self.form.as_mut() {
+                    Some(FormState::ProviderAdd(provider)) => {
+                        match provider.openclaw_models.get_mut(model_index) {
+                            Some(model) => crate::omp_config::apply_omp_thinking_level_selection(
+                                model, &checked,
+                            )
+                            .err(),
+                            None => Some(crate::error::AppError::InvalidInput(
+                                "Oh My Pi model index is out of range".into(),
+                            )),
+                        }
+                    }
+                    _ => Some(crate::error::AppError::InvalidInput(
+                        "Oh My Pi model index is out of range".into(),
+                    )),
+                };
+                if let Some(error) = error {
+                    self.push_toast(error, ToastKind::Error);
+                }
+                self.overlay = Overlay::None;
+            }
+            _ => {}
+        }
+    }
+
     pub(super) fn handle_picker_overlay_key(
         &mut self,
         key: KeyEvent,
@@ -158,6 +266,9 @@ impl App {
             return Some(action);
         }
         if let Some(action) = self.handle_codex_reasoning_picker_key(key) {
+            return Some(action);
+        }
+        if let Some(action) = self.handle_omp_thinking_picker_key(key) {
             return Some(action);
         }
         if let Some(action) = self.handle_user_agent_picker_key(key) {
