@@ -1562,6 +1562,33 @@ base_url = "https://current.example.com/v1"
     }
 
     #[test]
+    fn model_fetch_target_for_omp_matches_pi_bearer_flow() {
+        let settings = json!({
+            "baseUrl": "https://api.example.com/v1",
+            "apiKey": "secret",
+            "api": "openai-completions",
+            "models": [{ "id": "m" }]
+        });
+        let omp = Provider::with_id(
+            "omp-custom".to_string(),
+            "Display".to_string(),
+            settings.clone(),
+            None,
+        );
+        let pi = Provider::with_id(
+            "omp-custom".to_string(),
+            "Display".to_string(),
+            settings,
+            None,
+        );
+        let target = model_fetch_target(&omp, &AppType::Omp).unwrap();
+        let pi_target = model_fetch_target(&pi, &AppType::Pi).unwrap();
+        assert_eq!(target.base_url, pi_target.base_url);
+        assert_eq!(target.auth_value, pi_target.auth_value);
+        assert_eq!(target.strategy, pi_target.strategy);
+    }
+
+    #[test]
     fn model_fetch_target_for_claude_supports_openrouter_bearer_mode() {
         let provider = Provider::with_id(
             "demo".to_string(),
