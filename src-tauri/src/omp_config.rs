@@ -773,7 +773,6 @@ fn write_thinking(model: &mut Map<String, Value>, kept: &[(&str, String)]) {
     model.insert("reasoning".to_string(), Value::Bool(true));
 }
 
-#[allow(dead_code)] // library check does not compile the tests that call this
 pub(crate) fn omp_thinking_level_checks(model: &Value) -> [bool; 6] {
     let map = model.get("thinkingLevelMap").and_then(Value::as_object);
     let mut checked = [false; 6];

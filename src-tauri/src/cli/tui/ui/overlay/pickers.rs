@@ -137,10 +137,11 @@ pub(super) fn render_omp_thinking_picker_overlay(
         }
         _ => return,
     };
-    keys.extend([
-        ("Enter", texts::tui_key_apply()),
-        ("Esc", texts::tui_key_cancel()),
-    ]);
+    let enter = match overlay {
+        Overlay::OmpThinkingModelPicker { .. } => texts::tui_key_open(),
+        _ => texts::tui_key_apply(),
+    };
+    keys.extend([("Enter", enter), ("Esc", texts::tui_key_cancel())]);
     let body_area = overlay_frame(
         frame,
         content_area,
