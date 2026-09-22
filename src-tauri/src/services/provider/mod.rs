@@ -12,6 +12,7 @@ mod gemini_auth;
 mod live;
 pub(crate) mod live_merge;
 mod models;
+mod omp;
 mod pi;
 #[cfg(test)]
 mod tests;
@@ -515,6 +516,18 @@ impl ProviderService {
             pi::add(state, duplicate.clone(), false)?;
             return Ok(duplicate);
         }
+        if matches!(app_type, AppType::Omp) {
+            let providers = omp::list(state)?;
+            let source = providers.get(source_id).ok_or_else(|| {
+                AppError::InvalidInput(format!("Oh My Pi provider '{source_id}' not found"))
+            })?;
+            let mut existing_ids = providers.keys().cloned().collect::<HashSet<_>>();
+            existing_ids.extend(Self::live_provider_ids(&app_type)?);
+            let duplicate =
+                Self::duplicate_provider_with_overrides(source, provider_override, &existing_ids);
+            omp::add(state, duplicate.clone(), false)?;
+            return Ok(duplicate);
+        }
         let app_type_clone = app_type.clone();
         let source_id = source_id.to_string();
         let live_ids = if app_type.is_additive_mode() {
@@ -614,6 +627,16 @@ impl ProviderService {
         let current_credentials = if matches!(app_type, AppType::Pi) {
             (
                 crate::pi_config::provider_base_url(&provider.settings_config).unwrap_or_default(),
+                provider
+                    .settings_config
+                    .get("apiKey")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
+            )
+        } else if matches!(app_type, AppType::Omp) {
+            (
+                crate::omp_config::provider_base_url(&provider.settings_config).unwrap_or_default(),
                 provider
                     .settings_config
                     .get("apiKey")
@@ -2131,6 +2154,9 @@ impl ProviderService {
         if matches!(app_type, AppType::Pi) {
             return pi::list(state);
         }
+        if matches!(app_type, AppType::Omp) {
+            return omp::list(state);
+        }
         let config = state.config.read().map_err(AppError::from)?;
         let manager = config
             .get_manager(&app_type)
@@ -2160,6 +2186,9 @@ impl ProviderService {
     pub fn add(state: &AppState, app_type: AppType, provider: Provider) -> Result<bool, AppError> {
         if matches!(app_type, AppType::Pi) {
             return pi::add(state, provider, true);
+        }
+        if matches!(app_type, AppType::Omp) {
+            return omp::add(state, provider, true);
         }
         let mut provider = provider;
         // 归一化 Claude 模型键
@@ -2259,6 +2288,9 @@ impl ProviderService {
     ) -> Result<bool, AppError> {
         if matches!(app_type, AppType::Pi) {
             return pi::update(state, None, provider);
+        }
+        if matches!(app_type, AppType::Omp) {
+            return omp::update(state, None, provider);
         }
         let _mutation_guard = if app_type.is_additive_mode() {
             None
@@ -2669,6 +2701,9 @@ impl ProviderService {
         if matches!(app_type, AppType::Pi) {
             return pi::remove(state, provider_id);
         }
+        if matches!(app_type, AppType::Omp) {
+            return omp::remove(state, provider_id);
+        }
         if !app_type.is_additive_mode() {
             return Err(AppError::localized(
                 "provider.remove_from_live_config.unsupported",
@@ -2760,6 +2795,7 @@ impl ProviderService {
             AppType::OpenClaw => Self::import_openclaw_providers_from_live(state),
             AppType::Hermes => Self::import_hermes_providers_from_live(state),
             AppType::Pi => Self::import_pi_providers_from_live(state),
+            AppType::Omp => Self::import_omp_providers_from_live(state),
             _ => Self::import_default_config(state, app_type).map(usize::from),
         }
     }
@@ -3075,6 +3111,9 @@ impl ProviderService {
     pub fn switch(state: &AppState, app_type: AppType, provider_id: &str) -> Result<(), AppError> {
         if matches!(app_type, AppType::Pi) {
             return pi::enable(state, provider_id).map(|_| ());
+        }
+        if matches!(app_type, AppType::Omp) {
+            return omp::enable(state, provider_id).map(|_| ());
         }
         if !app_type.is_additive_mode() {
             let providers = state.db.get_all_providers(app_type.as_str())?;
@@ -3611,7 +3650,9 @@ impl ProviderService {
                 crate::pi_config::validate_provider_node(&provider.id, &provider.settings_config)?
             }
             AppType::Omp => {
-                crate::omp_config::validate_provider_node(&provider.id, &provider.settings_config)?
+                let prepared =
+                    crate::omp_config::prepare_omp_provider_config(&provider.settings_config)?;
+                crate::omp_config::validate_provider_node(&provider.id, &prepared)?
             }
         }
 
@@ -3705,6 +3746,9 @@ impl ProviderService {
     pub fn delete(state: &AppState, app_type: AppType, provider_id: &str) -> Result<(), AppError> {
         if matches!(app_type, AppType::Pi) {
             return pi::delete(state, provider_id);
+        }
+        if matches!(app_type, AppType::Omp) {
+            return omp::delete(state, provider_id);
         }
         let (local_current_provider, stored_current_provider) = if app_type.is_additive_mode() {
             (None, None)
@@ -3851,6 +3895,10 @@ impl ProviderService {
 
     pub fn import_pi_providers_from_live(state: &AppState) -> Result<usize, AppError> {
         pi::import_from_live(state)
+    }
+
+    pub fn import_omp_providers_from_live(state: &AppState) -> Result<usize, AppError> {
+        omp::import_from_live(state)
     }
 
     pub fn import_hermes_providers_from_live(state: &AppState) -> Result<usize, AppError> {
