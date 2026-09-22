@@ -543,6 +543,8 @@ pub struct AppSettings {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pi_config_dir: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub omp_config_dir: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub current_provider_claude: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub current_provider_codex: Option<String>,
@@ -645,6 +647,7 @@ impl Default for AppSettings {
             hermes_config_dir: None,
             openclaw_config_dir: None,
             pi_config_dir: None,
+            omp_config_dir: None,
             current_provider_claude: None,
             current_provider_codex: None,
             current_provider_gemini: None,
@@ -728,6 +731,13 @@ impl AppSettings {
 
         self.pi_config_dir = self
             .pi_config_dir
+            .as_ref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string());
+
+        self.omp_config_dir = self
+            .omp_config_dir
             .as_ref()
             .map(|s| s.trim())
             .filter(|s| !s.is_empty())
@@ -1128,6 +1138,14 @@ pub fn get_pi_override_dir() -> Option<PathBuf> {
     let settings = settings_store().read().ok()?;
     settings
         .pi_config_dir
+        .as_ref()
+        .map(|path| resolve_override_path(path))
+}
+
+pub fn get_omp_override_dir() -> Option<PathBuf> {
+    let settings = settings_store().read().ok()?;
+    settings
+        .omp_config_dir
         .as_ref()
         .map(|path| resolve_override_path(path))
 }
