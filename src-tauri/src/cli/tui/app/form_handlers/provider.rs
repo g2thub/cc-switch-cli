@@ -85,16 +85,20 @@ impl App {
                         texts::tui_toast_provider_add_missing_fields().to_string()
                     },
                 ))
-            } else if matches!(provider.app_type, crate::app_config::AppType::Pi)
-                && !provider.mode.is_edit()
+            } else if matches!(
+                provider.app_type,
+                crate::app_config::AppType::Pi | crate::app_config::AppType::Omp
+            ) && !provider.mode.is_edit()
                 && !crate::pi_config::is_valid_request_url(&provider.current_provider_base_url())
             {
                 Some((
                     ProviderValidationTarget::Main(ProviderAddField::OpenCodeBaseUrl),
                     texts::base_url_empty_error().to_string(),
                 ))
-            } else if matches!(provider.app_type, crate::app_config::AppType::Pi)
-                && !provider.mode.is_edit()
+            } else if matches!(
+                provider.app_type,
+                crate::app_config::AppType::Pi | crate::app_config::AppType::Omp
+            ) && !provider.mode.is_edit()
                 && !crate::openclaw_config::OPENCLAW_API_PROTOCOLS
                     .contains(&provider.opencode_npm_package.value.trim())
             {
@@ -102,8 +106,10 @@ impl App {
                     ProviderValidationTarget::Main(ProviderAddField::OpenClawApiProtocol),
                     texts::tui_toast_provider_add_missing_fields().to_string(),
                 ))
-            } else if matches!(provider.app_type, crate::app_config::AppType::Pi)
-                && !provider.mode.is_edit()
+            } else if matches!(
+                provider.app_type,
+                crate::app_config::AppType::Pi | crate::app_config::AppType::Omp
+            ) && !provider.mode.is_edit()
                 && !provider.openclaw_models.iter().any(|model| {
                     model
                         .get("id")

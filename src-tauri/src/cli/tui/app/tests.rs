@@ -13067,6 +13067,31 @@ mod tests {
     }
 
     #[test]
+    fn omp_add_without_model_id_is_rejected() {
+        let mut app = App::new(Some(AppType::Omp));
+        let mut form = ProviderAddFormState::new(AppType::Omp);
+        form.name.set("Display");
+        form.id.set("display");
+        form.opencode_base_url.set("https://api.example.com/v1");
+        form.opencode_api_key.set("secret");
+        form.opencode_npm_package.set("openai-completions");
+        form.openclaw_models.clear();
+        form.focus = FormFocus::Fields;
+        app.form = Some(FormState::ProviderAdd(form));
+
+        assert!(matches!(
+            app.handle_form_save_shortcut(&data()),
+            Action::None
+        ));
+        let Some(FormState::ProviderAdd(form)) = app.form.as_ref() else {
+            panic!("expected provider form");
+        };
+        assert!(form
+            .main_field_error(ProviderAddField::OpenClawModels)
+            .is_some());
+    }
+
+    #[test]
     fn provider_add_form_codex_rejects_invalid_anthropic_max_output_tokens() {
         let mut app = App::new(Some(AppType::Codex));
         app.route = Route::Providers;

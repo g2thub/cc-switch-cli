@@ -54,13 +54,19 @@ fn validate_provider_submit(
         }
     }
 
-    if matches!(app_type, AppType::Pi) {
+    if matches!(app_type, AppType::Pi | AppType::Omp) {
         let settings = &provider.settings_config;
-        let request_url = crate::pi_config::provider_base_url(settings).ok();
-        let unchanged_legacy_url = is_edit
-            && expected_pi_settings
-                .and_then(|expected| crate::pi_config::provider_base_url(expected).ok())
-                == request_url;
+        let request_url = match app_type {
+            AppType::Pi => crate::pi_config::provider_base_url(settings).ok(),
+            AppType::Omp => crate::omp_config::provider_base_url(settings).ok(),
+            _ => None,
+        };
+        let previous_url = expected_pi_settings.and_then(|expected| match app_type {
+            AppType::Pi => crate::pi_config::provider_base_url(expected).ok(),
+            AppType::Omp => crate::omp_config::provider_base_url(expected).ok(),
+            _ => None,
+        });
+        let unchanged_legacy_url = is_edit && previous_url == request_url;
         let valid_base_url = request_url
             .as_deref()
             .is_some_and(crate::pi_config::is_valid_request_url);

@@ -272,7 +272,7 @@ impl ProviderAddFormState {
         };
         form.focus = FormFocus::Fields;
         form.extra = serde_json::to_value(provider).unwrap_or_else(|_| json!({}));
-        if matches!(app_type, AppType::Pi) {
+        if matches!(app_type, AppType::Pi | AppType::Omp) {
             form.initial_pi_settings_config = Some(provider.settings_config.clone());
         }
 
@@ -464,7 +464,7 @@ impl ProviderAddFormState {
     }
 
     pub fn initial_pi_settings_config(&self) -> Option<Value> {
-        (matches!(self.app_type, AppType::Pi) && self.mode.is_edit())
+        (matches!(self.app_type, AppType::Pi | AppType::Omp) && self.mode.is_edit())
             .then(|| self.initial_pi_settings_config.clone())
             .flatten()
     }
