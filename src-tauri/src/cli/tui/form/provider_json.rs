@@ -683,7 +683,9 @@ impl ProviderAddFormState {
             }
             AppType::OpenClaw | AppType::Pi | AppType::Omp => {
                 let is_pi = matches!(self.app_type, AppType::Pi);
-                let original_pi_settings = is_pi
+                let is_omp = matches!(self.app_type, AppType::Omp);
+                let is_native = is_pi || is_omp;
+                let original_pi_settings = is_native
                     .then(|| {
                         self.extra
                             .pointer("/settingsConfig")
@@ -707,14 +709,14 @@ impl ProviderAddFormState {
                         );
                     }
                 }
-                if !is_pi {
+                if !is_native {
                     settings_obj.remove("npm");
                     settings_obj.remove("options");
                     settings_obj.remove("api_key");
                     settings_obj.remove("base_url");
                 }
 
-                if !is_pi
+                if !is_native
                     || pi_native_string_field_changed(
                         original_pi_settings,
                         "apiKey",
@@ -723,7 +725,7 @@ impl ProviderAddFormState {
                 {
                     set_or_remove_trimmed(settings_obj, "apiKey", &self.opencode_api_key.value);
                 }
-                if !is_pi
+                if !is_native
                     || pi_native_string_field_changed(
                         original_pi_settings,
                         "baseUrl",
@@ -734,14 +736,14 @@ impl ProviderAddFormState {
                 }
 
                 let api_value = self.opencode_npm_package.value.trim();
-                if !is_pi
+                if !is_native
                     || pi_native_string_field_changed(
                         original_pi_settings,
                         "api",
                         &self.opencode_npm_package.value,
                     )
                 {
-                    if is_pi && api_value.is_empty() {
+                    if is_native && api_value.is_empty() {
                         settings_obj.remove("api");
                     } else {
                         settings_obj.insert(
@@ -755,7 +757,7 @@ impl ProviderAddFormState {
                     }
                 }
 
-                if !is_pi {
+                if !is_native {
                     let mut headers_obj = match settings_obj.remove("headers") {
                         Some(Value::Object(map)) => map,
                         _ => serde_json::Map::new(),
@@ -774,17 +776,36 @@ impl ProviderAddFormState {
                     }
                 }
 
-                if is_pi {
-                    let models_changed =
-                        match original_pi_settings.and_then(|settings| settings.get("models")) {
-                            Some(Value::Array(models)) => models != &self.openclaw_models,
-                            Some(_) | None => !self.openclaw_models.is_empty(),
-                        };
+                if is_native {
+                    let models_changed = match original_pi_settings
+                        .and_then(|settings| settings.get("models"))
+                    {
+                        Some(Value::Array(models)) => {
+                            if is_omp {
+                                models
+                                    .iter()
+                                    .cloned()
+                                    .map(super::provider_state_loading::project_omp_model_for_form)
+                                    .collect::<Vec<_>>()
+                                    != self.openclaw_models
+                            } else {
+                                models != &self.openclaw_models
+                            }
+                        }
+                        Some(_) | None => !self.openclaw_models.is_empty(),
+                    };
                     if models_changed {
-                        settings_obj.insert(
-                            "models".to_string(),
-                            Value::Array(self.openclaw_models.clone()),
-                        );
+                        let models = if is_omp {
+                            crate::omp_config::prepare_omp_provider_config(&json!({
+                                "models": self.openclaw_models,
+                            }))
+                            .ok()
+                            .and_then(|prepared| prepared.get("models").cloned())
+                            .unwrap_or_else(|| Value::Array(self.openclaw_models.clone()))
+                        } else {
+                            Value::Array(self.openclaw_models.clone())
+                        };
+                        settings_obj.insert("models".to_string(), models);
                     }
                 } else {
                     let mut models = if self.openclaw_models.is_empty() {

@@ -8094,3 +8094,29 @@ fn provider_add_form_pi_preserves_raw_native_settings_and_names_a_copy() {
         expected_copy
     );
 }
+
+#[test]
+fn omp_form_has_no_preset_catalog_and_emits_thinking_efforts() {
+    let form = ProviderAddFormState::new(AppType::Omp);
+    assert_eq!(form.template_count(), 1);
+    let mut form = ProviderAddFormState::new(AppType::Omp);
+    form.name.set("Display");
+    form.opencode_base_url.set("https://api.example.com/v1");
+    form.opencode_api_key.set("secret");
+    form.opencode_npm_package.set("openai-completions");
+    form.openclaw_models = vec![json!({
+        "id": "m",
+        "name": "Model name",
+        "thinkingLevelMap": { "high": "vendor-high" }
+    })];
+    let settings = form.to_provider_json_value()["settingsConfig"].clone();
+    assert!(settings.get("name").is_none());
+    assert_eq!(settings["baseUrl"], "https://api.example.com/v1");
+    assert_eq!(settings["apiKey"], "secret");
+    assert!(settings["models"][0].get("thinkingLevelMap").is_none());
+    assert_eq!(
+        settings["models"][0]["thinking"]["efforts"],
+        json!(["high"])
+    );
+    assert_eq!(settings["models"][0]["name"], "Model name");
+}

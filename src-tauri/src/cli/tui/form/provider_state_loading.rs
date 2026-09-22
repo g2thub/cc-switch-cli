@@ -459,7 +459,7 @@ fn populate_openclaw_form(form: &mut ProviderAddFormState, provider: &Provider) 
         .and_then(|value| value.as_str())
     {
         form.opencode_npm_package.set(api);
-    } else if matches!(form.app_type, AppType::Pi) {
+    } else if matches!(form.app_type, AppType::Pi | AppType::Omp) {
         form.opencode_npm_package.set("");
     } else {
         form.opencode_npm_package.set(OPENCLAW_DEFAULT_API_PROTOCOL);
@@ -478,6 +478,14 @@ fn populate_openclaw_form(form: &mut ProviderAddFormState, provider: &Provider) 
         .and_then(|value| value.as_array())
     {
         form.openclaw_models = models.clone();
+    }
+    if matches!(form.app_type, AppType::Omp) {
+        form.openclaw_models = form
+            .openclaw_models
+            .iter()
+            .cloned()
+            .map(project_omp_model_for_form)
+            .collect();
     }
     if let Some(model) = form.openclaw_models.first() {
         if let Some(id) = model.get("id").and_then(|value| value.as_str()) {
@@ -557,4 +565,51 @@ fn opencode_model_rank(model: &Value) -> usize {
         score += 1;
     }
     score
+}
+
+pub(super) fn project_omp_model_for_form(mut model: Value) -> Value {
+    let Some(object) = model.as_object_mut() else {
+        return model;
+    };
+    let Some(thinking) = object.get("thinking").and_then(Value::as_object).cloned() else {
+        return model;
+    };
+    if thinking.get("mode").and_then(Value::as_str) != Some("effort") {
+        return model;
+    }
+    let efforts = thinking
+        .get("efforts")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let effort_map = thinking
+        .get("effortMap")
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
+    let mut level_map = serde_json::Map::new();
+    for effort in efforts {
+        let Some(level) = effort.as_str() else {
+            continue;
+        };
+        let value = effort_map
+            .get(level)
+            .and_then(Value::as_str)
+            .unwrap_or(level);
+        level_map.insert(level.to_string(), Value::String(value.to_string()));
+    }
+    object.insert("thinkingLevelMap".to_string(), Value::Object(level_map));
+    if let Some(thinking) = object.get_mut("thinking").and_then(Value::as_object_mut) {
+        thinking.remove("mode");
+        thinking.remove("efforts");
+        thinking.remove("effortMap");
+    }
+    if object
+        .get("thinking")
+        .and_then(Value::as_object)
+        .is_some_and(serde_json::Map::is_empty)
+    {
+        object.remove("thinking");
+    }
+    model
 }
