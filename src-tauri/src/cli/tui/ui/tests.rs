@@ -12761,8 +12761,12 @@ fn workspace_daily_memory_route_render_shows_search_results_when_query_is_active
 
 #[test]
 fn provider_form_model_field_hints_enter_edit_and_f_fetch() {
-    let keys =
-        super::add_form_key_items(FormFocus::Fields, false, Some(ProviderAddField::CodexModel));
+    let keys = super::add_form_key_items(
+        FormFocus::Fields,
+        false,
+        Some(ProviderAddField::CodexModel),
+        &AppType::Codex,
+    );
     let enter_label = keys
         .iter()
         .find(|(key, _label)| *key == "Enter")
@@ -12777,10 +12781,39 @@ fn provider_form_model_field_hints_enter_edit_and_f_fetch() {
 }
 
 #[test]
+fn omp_models_key_bar_advertises_fetch_and_openclaw_does_not() {
+    let omp = super::add_form_key_items(
+        FormFocus::Fields,
+        false,
+        Some(ProviderAddField::OpenClawModels),
+        &AppType::Omp,
+    );
+    assert_eq!(omp.first().map(|(key, _)| *key), Some("f"));
+    assert_eq!(
+        omp.iter()
+            .find(|(key, _)| *key == "f")
+            .map(|(_, label)| *label),
+        Some(texts::tui_key_fetch_model())
+    );
+
+    let openclaw = super::add_form_key_items(
+        FormFocus::Fields,
+        false,
+        Some(ProviderAddField::OpenClawModels),
+        &AppType::OpenClaw,
+    );
+    assert!(openclaw.iter().all(|(key, _)| *key != "f"));
+}
+
+#[test]
 fn provider_template_field_key_bar_advertises_select() {
     let _lang = use_test_language(Language::English);
-    let keys =
-        super::add_form_key_items(FormFocus::Fields, false, Some(ProviderAddField::Template));
+    let keys = super::add_form_key_items(
+        FormFocus::Fields,
+        false,
+        Some(ProviderAddField::Template),
+        &AppType::Claude,
+    );
     assert_eq!(
         keys.iter()
             .find(|(key, _label)| *key == "Enter")
@@ -12796,7 +12829,11 @@ fn provider_base_url_key_bar_advertises_full_url_shortcut() {
         ProviderAddField::ClaudeBaseUrl,
         ProviderAddField::CodexBaseUrl,
     ] {
-        let keys = super::add_form_key_items(FormFocus::Fields, false, Some(field));
+        let app_type = match field {
+            ProviderAddField::CodexBaseUrl => &AppType::Codex,
+            _ => &AppType::Claude,
+        };
+        let keys = super::add_form_key_items(FormFocus::Fields, false, Some(field), app_type);
         assert_eq!(
             keys.iter()
                 .find(|(key, _label)| *key == "f")
@@ -12809,6 +12846,7 @@ fn provider_base_url_key_bar_advertises_full_url_shortcut() {
         FormFocus::Fields,
         true,
         Some(ProviderAddField::ClaudeBaseUrl),
+        &AppType::Claude,
     );
     assert!(editing.iter().all(|(key, _label)| *key != "f"));
 }
@@ -12848,6 +12886,7 @@ fn form_toggle_key_bars_show_enter_without_space() {
             FormFocus::Fields,
             false,
             Some(ProviderAddField::IncludeCommonConfig),
+            &AppType::Claude,
         ),
         super::quick_config_form_key_items(),
         super::usage_query_form_key_items(

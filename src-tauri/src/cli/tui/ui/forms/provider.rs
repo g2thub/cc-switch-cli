@@ -478,6 +478,7 @@ pub(crate) fn render_provider_add_form(
             provider.focus,
             provider.is_editing_main_text(),
             selected_field_for_keys,
+            &provider.app_type,
         ),
     );
 

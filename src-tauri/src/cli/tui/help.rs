@@ -896,8 +896,8 @@ fn provider_field_help(app_type: AppType, field: ProviderAddField) -> HelpConten
         ProviderAddField::OpenClawModels => HelpContent::new(
             texts::tui_label_openclaw_models(),
             help_lines(
-                "编辑 OpenClaw/Pi 模型列表。Pi 表单中可按 f 从原生端点拉取模型。",
-                "Edits OpenClaw/Pi model entries. In a Pi form, press f to fetch from the native endpoint.",
+                "编辑 OpenClaw/Pi/OMP 模型列表。Pi 和 OMP 聚焦此项时按 f 从供应商端点拉取模型，选中的 id 会追加到模型数组。",
+                "Edits OpenClaw/Pi/OMP model entries. On Pi and OMP, press f to fetch from the provider endpoint; the chosen id is appended to the model array.",
             ),
         ),
         ProviderAddField::OpenCodeModelContextLimit => HelpContent::new(
