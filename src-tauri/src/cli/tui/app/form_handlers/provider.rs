@@ -110,7 +110,8 @@ impl App {
                 crate::app_config::AppType::Pi | crate::app_config::AppType::Omp
             ) && (!provider.mode.is_edit()
                 || matches!(provider.app_type, crate::app_config::AppType::Omp))
-                && !omp_override_only_edit
+                && !(omp_override_only_edit
+                    && provider.current_provider_base_url().trim().is_empty())
                 && !crate::pi_config::is_valid_request_url(&provider.current_provider_base_url())
             {
                 Some((
