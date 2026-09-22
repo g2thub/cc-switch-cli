@@ -72,6 +72,12 @@ fn parse_app_target(value: &str, feature: &str) -> Result<AppType, AppError> {
             supported_app_target_labels_for(feature)
         )));
     }
+    if matches!(app, AppType::Omp) {
+        return Err(AppError::InvalidInput(format!(
+            "{feature} does not support omp. Supported apps: {}",
+            supported_app_target_labels_for(feature)
+        )));
+    }
 
     if matches!(app, AppType::Pi) && feature.eq_ignore_ascii_case("MCP") {
         return Err(AppError::InvalidInput(format!(
@@ -136,5 +142,14 @@ mod tests {
         let error = parse_app_targets(&["pi".to_string()], "MCP")
             .expect_err("Pi must not be an MCP target");
         assert!(error.to_string().contains("does not support pi"));
+    }
+
+    #[test]
+    fn parse_app_targets_rejects_omp_for_resource_features() {
+        for feature in ["MCP", "Skills"] {
+            let error = parse_app_targets(&["omp".to_string()], feature)
+                .expect_err("OMP must not be a resource target");
+            assert!(error.to_string().contains("does not support omp"));
+        }
     }
 }

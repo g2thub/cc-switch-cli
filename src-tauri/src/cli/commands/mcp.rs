@@ -73,6 +73,11 @@ pub fn execute(cmd: McpCommand, app: Option<AppType>) -> Result<(), AppError> {
             "Pi does not support MCP management".to_string(),
         ));
     }
+    if matches!(app_type, AppType::Omp) {
+        return Err(AppError::InvalidInput(
+            "OMP does not support MCP management".to_string(),
+        ));
+    }
 
     match cmd {
         McpCommand::List => list_servers(app_type),
@@ -475,6 +480,13 @@ mod tests {
             assert!(matches!(
                 error,
                 AppError::InvalidInput(message) if message == "Pi does not support MCP management"
+            ));
+        }
+        for command in [McpCommand::List, McpCommand::Sync, McpCommand::Import] {
+            let error = execute(command, Some(AppType::Omp)).expect_err("OMP MCP must be rejected");
+            assert!(matches!(
+                error,
+                AppError::InvalidInput(message) if message == "OMP does not support MCP management"
             ));
         }
     }

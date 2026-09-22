@@ -74,7 +74,7 @@ fn validate_provider_submit(
         if !valid_base_url && !unchanged_legacy_url && !missing_existing_url {
             return Some(texts::base_url_empty_error());
         }
-        if is_edit {
+        if is_edit && !matches!(app_type, AppType::Omp) {
             return None;
         }
         let api = settings.get("api").and_then(Value::as_str).map(str::trim);
@@ -89,9 +89,15 @@ fn validate_provider_submit(
                         .is_some_and(|id| !id.trim().is_empty())
                 })
             });
-        if api.is_none_or(|value| !crate::openclaw_config::OPENCLAW_API_PROTOCOLS.contains(&value))
-            || !has_model
-        {
+        let valid_api = match app_type {
+            AppType::Omp => {
+                api.is_some_and(|value| crate::omp_config::OMP_API_PROTOCOLS.contains(&value))
+            }
+            _ => api.is_some_and(|value| {
+                crate::openclaw_config::OPENCLAW_API_PROTOCOLS.contains(&value)
+            }),
+        };
+        if !valid_api || !has_model {
             return Some(texts::tui_toast_provider_add_missing_fields());
         }
     }

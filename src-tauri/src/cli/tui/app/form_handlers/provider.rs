@@ -88,7 +88,8 @@ impl App {
             } else if matches!(
                 provider.app_type,
                 crate::app_config::AppType::Pi | crate::app_config::AppType::Omp
-            ) && !provider.mode.is_edit()
+            ) && (!provider.mode.is_edit()
+                || matches!(provider.app_type, crate::app_config::AppType::Omp))
                 && !crate::pi_config::is_valid_request_url(&provider.current_provider_base_url())
             {
                 Some((
@@ -98,9 +99,14 @@ impl App {
             } else if matches!(
                 provider.app_type,
                 crate::app_config::AppType::Pi | crate::app_config::AppType::Omp
-            ) && !provider.mode.is_edit()
-                && !crate::openclaw_config::OPENCLAW_API_PROTOCOLS
-                    .contains(&provider.opencode_npm_package.value.trim())
+            ) && (!provider.mode.is_edit()
+                || matches!(provider.app_type, crate::app_config::AppType::Omp))
+                && (match provider.app_type {
+                    crate::app_config::AppType::Omp => !crate::omp_config::OMP_API_PROTOCOLS
+                        .contains(&provider.opencode_npm_package.value.trim()),
+                    _ => !crate::openclaw_config::OPENCLAW_API_PROTOCOLS
+                        .contains(&provider.opencode_npm_package.value.trim()),
+                })
             {
                 Some((
                     ProviderValidationTarget::Main(ProviderAddField::OpenClawApiProtocol),
@@ -109,7 +115,8 @@ impl App {
             } else if matches!(
                 provider.app_type,
                 crate::app_config::AppType::Pi | crate::app_config::AppType::Omp
-            ) && !provider.mode.is_edit()
+            ) && (!provider.mode.is_edit()
+                || matches!(provider.app_type, crate::app_config::AppType::Omp))
                 && !provider.openclaw_models.iter().any(|model| {
                     model
                         .get("id")
@@ -517,6 +524,7 @@ impl App {
                     .opencode_npm_package
                     .set(next_openclaw_api_protocol(
                         &provider.opencode_npm_package.value,
+                        &provider.app_type,
                     ));
                 Action::None
             }
@@ -2123,10 +2131,16 @@ fn is_provider_divider_field(field: Option<&ProviderAddField>) -> bool {
         )
     )
 }
-
-fn next_openclaw_api_protocol(current: &str) -> &'static str {
+fn next_openclaw_api_protocol(
+    current: &str,
+    app_type: &crate::app_config::AppType,
+) -> &'static str {
     let current = current.trim();
-    let protocols = &form::OPENCLAW_API_PROTOCOLS;
+    let protocols: &[&str] = if matches!(app_type, crate::app_config::AppType::Omp) {
+        &form::OMP_API_PROTOCOLS
+    } else {
+        &form::OPENCLAW_API_PROTOCOLS
+    };
     let next_idx = protocols
         .iter()
         .position(|candidate| *candidate == current)

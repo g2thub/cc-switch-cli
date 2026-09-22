@@ -55,6 +55,7 @@ pub(crate) use webdav::{WebDavSyncField, WebDavSyncFormState};
 
 pub(crate) use crate::claude_model_config::ClaudeModelRole;
 pub(crate) use crate::hermes_config::{HERMES_API_MODES, HERMES_DEFAULT_API_MODE};
+pub(crate) use crate::omp_config::OMP_API_PROTOCOLS;
 pub(crate) use crate::openclaw_config::{
     OPENCLAW_API_PROTOCOLS, OPENCLAW_DEFAULT_API_PROTOCOL, OPENCLAW_DEFAULT_USER_AGENT,
 };

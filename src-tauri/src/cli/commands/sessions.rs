@@ -125,6 +125,11 @@ struct SessionMessagesOutput<'a> {
 }
 
 pub fn execute(cmd: SessionsCommand, app: Option<AppType>) -> Result<(), AppError> {
+    if app.as_ref().is_some_and(|app| matches!(app, AppType::Omp)) {
+        return Err(AppError::InvalidInput(
+            "OMP does not support session management".to_string(),
+        ));
+    }
     match cmd {
         SessionsCommand::List {
             provider,
@@ -776,7 +781,8 @@ fn parse_session_provider(value: &str) -> Result<AppType, String> {
 
 fn app_type_from_provider_id(provider_id: &str) -> Option<AppType> {
     let normalized = provider_id.trim().to_lowercase().replace('-', "");
-    AppType::from_str(&normalized).ok()
+    let app = AppType::from_str(&normalized).ok()?;
+    (!matches!(app, AppType::Omp)).then_some(app)
 }
 
 fn load_session_messages(session: &SessionMeta) -> (Option<SessionMessageBatch>, Option<String>) {

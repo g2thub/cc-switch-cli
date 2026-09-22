@@ -429,7 +429,7 @@ fn providers_mut(document: &mut Yaml) -> Result<&mut Mapping, AppError> {
         .ok_or_else(|| invalid("The providers field must be an object."))
 }
 
-const APIS: &[&str] = &[
+pub(crate) const OMP_API_PROTOCOLS: [&str; 9] = [
     "openai-completions",
     "openai-responses",
     "openai-codex-responses",
@@ -457,7 +457,9 @@ fn check_fields(
 
 fn validate_api(object: &Map<String, Value>) -> Result<(), AppError> {
     check_fields(object, &["api"], |value| {
-        value.as_str().is_some_and(|api| APIS.contains(&api))
+        value
+            .as_str()
+            .is_some_and(|api| OMP_API_PROTOCOLS.contains(&api))
     })
 }
 

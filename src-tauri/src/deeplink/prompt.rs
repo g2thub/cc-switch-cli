@@ -37,6 +37,11 @@ pub fn import_prompt_from_deeplink(
     // Parse app type
     let app_type = AppType::from_str(app_str)
         .map_err(|_| AppError::InvalidInput(format!("Invalid app type: {app_str}")))?;
+    if matches!(app_type, AppType::Omp) {
+        return Err(AppError::InvalidInput(
+            "OMP does not support prompt management".to_string(),
+        ));
+    }
 
     // Decode content
     let content_b64 = request

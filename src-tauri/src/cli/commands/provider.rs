@@ -1456,10 +1456,10 @@ fn build_add_settings_config(
                 non_empty(args.model.clone()).ok_or_else(|| add_missing_field_error("--model"))?;
             let api = non_empty(args.api_format.clone())
                 .unwrap_or_else(|| "openai-completions".to_string());
-            if !crate::openclaw_config::OPENCLAW_API_PROTOCOLS.contains(&api.as_str()) {
+            if !crate::omp_config::OMP_API_PROTOCOLS.contains(&api.as_str()) {
                 return Err(add_invalid_api_format_error(
                     &api,
-                    &crate::openclaw_config::OPENCLAW_API_PROTOCOLS.join("|"),
+                    &crate::omp_config::OMP_API_PROTOCOLS.join("|"),
                 ));
             }
             let mut settings = serde_json::json!({

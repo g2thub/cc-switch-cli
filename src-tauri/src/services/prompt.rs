@@ -408,7 +408,7 @@ impl PromptService {
         let mut active_prompts = Vec::new();
 
         for app in AppType::all() {
-            if matches!(app, AppType::Pi) {
+            if matches!(app, AppType::Pi | AppType::Omp) {
                 continue;
             }
             let prompts = state.db.get_prompts(app.as_str())?;

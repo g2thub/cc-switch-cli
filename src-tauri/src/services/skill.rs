@@ -629,7 +629,7 @@ enum PiSkillDeployment {
 
 impl SkillService {
     fn app_supports_skills(app: &AppType) -> bool {
-        !matches!(app, AppType::OpenClaw)
+        !matches!(app, AppType::OpenClaw | AppType::Omp)
     }
 
     pub fn supported_skill_apps() -> impl Iterator<Item = AppType> {
@@ -645,7 +645,7 @@ impl SkillService {
     }
 
     fn skill_source_apps() -> impl Iterator<Item = AppType> {
-        AppType::all()
+        AppType::all().filter(Self::app_supports_skills)
     }
 
     pub fn new() -> Result<Self, AppError> {

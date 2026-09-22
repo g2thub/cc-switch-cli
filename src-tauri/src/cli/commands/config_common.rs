@@ -72,6 +72,11 @@ pub enum CommonConfigCommand {
 }
 
 pub fn execute(cmd: CommonConfigCommand, app_type: AppType) -> Result<(), AppError> {
+    if matches!(app_type, AppType::Omp) {
+        return Err(AppError::InvalidInput(
+            "OMP does not support common config snippets".to_string(),
+        ));
+    }
     match cmd {
         CommonConfigCommand::Show => show(app_type),
         CommonConfigCommand::Format { snippet, file } => {

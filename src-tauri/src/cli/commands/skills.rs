@@ -150,7 +150,11 @@ pub enum SkillReposCommand {
 
 pub fn execute(cmd: SkillsCommand, app: Option<AppType>) -> Result<(), AppError> {
     let app_type = app.clone().unwrap_or(AppType::Claude);
-
+    if matches!(app_type, AppType::Omp) {
+        return Err(AppError::InvalidInput(
+            "OMP does not support Skills management".to_string(),
+        ));
+    }
     match cmd {
         SkillsCommand::List => list_installed(),
         SkillsCommand::Discover { query } => discover_skills(query.as_deref()),
@@ -501,6 +505,12 @@ fn ensure_supported_skills_app(app: &AppType, action: &str) -> Result<(), AppErr
     if matches!(app, AppType::OpenClaw) {
         return Err(AppError::InvalidInput(format!(
             "Skills {action} does not support openclaw yet. Supported apps: {}",
+            supported_app_target_labels()
+        )));
+    }
+    if matches!(app, AppType::Omp) {
+        return Err(AppError::InvalidInput(format!(
+            "Skills {action} does not support omp. Supported apps: {}",
             supported_app_target_labels()
         )));
     }
