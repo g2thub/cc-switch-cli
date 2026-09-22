@@ -5505,6 +5505,41 @@ mod tests {
     }
 
     #[test]
+    fn provider_omp_model_fetch_selection_adds_a_model_entry() {
+        let mut app = App::new(Some(AppType::Omp));
+        app.form = Some(FormState::ProviderAdd(ProviderAddFormState::new(
+            AppType::Omp,
+        )));
+        app.overlay = Overlay::ModelFetchPicker {
+            request_id: 1,
+            field: ProviderAddField::OpenClawModels,
+            claude_idx: None,
+            input: TextInput::new(""),
+            query: String::new(),
+            fetching: false,
+            models: vec!["fetched-model".to_string()],
+            filtered_indices: None,
+            filter_incomplete: false,
+            error: None,
+            selected_idx: 0,
+            selection_active: false,
+        };
+
+        assert!(matches!(
+            app.on_key(key(KeyCode::Enter), &data()),
+            Action::None
+        ));
+        let Some(FormState::ProviderAdd(form)) = app.form.as_ref() else {
+            panic!("expected provider form");
+        };
+        assert_eq!(form.openclaw_models, vec![json!({ "id": "fetched-model" })]);
+        let settings = form.to_provider_json_value()["settingsConfig"].clone();
+        assert!(settings.get("name").is_none());
+        assert_eq!(settings["models"][0]["id"], "fetched-model");
+        assert!(settings["models"][0].get("thinkingLevelMap").is_none());
+    }
+
+    #[test]
     fn pi_system_prompt_edit_uses_the_loaded_native_revision() {
         let mut app = App::new(Some(AppType::Pi));
         let mut data = UiData::default();
