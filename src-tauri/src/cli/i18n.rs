@@ -4718,6 +4718,38 @@ pub mod texts {
         }
     }
 
+    pub fn tui_key_thinking_levels() -> &'static str {
+        if is_chinese() {
+            "思考档位"
+        } else {
+            "Thinking levels"
+        }
+    }
+
+    pub fn tui_omp_thinking_model() -> &'static str {
+        if is_chinese() {
+            "选择模型"
+        } else {
+            "Choose model"
+        }
+    }
+
+    pub fn tui_omp_thinking_levels() -> &'static str {
+        if is_chinese() {
+            "思考档位"
+        } else {
+            "Thinking levels"
+        }
+    }
+
+    pub fn tui_omp_thinking_needs_model() -> &'static str {
+        if is_chinese() {
+            "先添加模型，再设置思考档位"
+        } else {
+            "Add a model before setting thinking levels"
+        }
+    }
+
     pub fn tui_key_fill_all() -> &'static str {
         if is_chinese() {
             "填充全部"
