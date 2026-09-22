@@ -23,6 +23,17 @@ use super::helpers::{
 };
 use super::RuntimeActionContext;
 
+fn omp_has_models(settings: &Value) -> bool {
+    settings
+        .get("models")
+        .and_then(Value::as_array)
+        .is_some_and(|models| !models.is_empty())
+}
+
+fn is_omp_override_only_edit(settings: &Value, expected: Option<&Value>) -> bool {
+    expected.is_some_and(|expected| !omp_has_models(settings) && !omp_has_models(expected))
+}
+
 fn validate_provider_submit(
     app_type: &AppType,
     provider: &Provider,
@@ -61,6 +72,8 @@ fn validate_provider_submit(
             AppType::Omp => crate::omp_config::provider_base_url(settings).ok(),
             _ => None,
         };
+        let omp_override_only_edit = matches!(app_type, AppType::Omp)
+            && is_omp_override_only_edit(settings, expected_pi_settings);
         let previous_url = expected_pi_settings.and_then(|expected| match app_type {
             AppType::Pi => crate::pi_config::provider_base_url(expected).ok(),
             AppType::Omp => crate::omp_config::provider_base_url(expected).ok(),
@@ -71,33 +84,28 @@ fn validate_provider_submit(
             .as_deref()
             .is_some_and(crate::pi_config::is_valid_request_url);
         let missing_existing_url = is_edit && request_url.is_none();
-        if !valid_base_url && !unchanged_legacy_url && !missing_existing_url {
+        if !valid_base_url
+            && !unchanged_legacy_url
+            && !missing_existing_url
+            && !(omp_override_only_edit && request_url.is_none())
+        {
             return Some(texts::base_url_empty_error());
         }
         if is_edit && !matches!(app_type, AppType::Omp) {
             return None;
         }
         let api = settings.get("api").and_then(Value::as_str).map(str::trim);
-        let has_model = settings
-            .get("models")
-            .and_then(Value::as_array)
-            .is_some_and(|models| {
-                models.iter().any(|model| {
-                    model
-                        .get("id")
-                        .and_then(Value::as_str)
-                        .is_some_and(|id| !id.trim().is_empty())
-                })
-            });
+        let has_model = omp_has_models(settings);
         let valid_api = match app_type {
             AppType::Omp => {
                 api.is_some_and(|value| crate::omp_config::OMP_API_PROTOCOLS.contains(&value))
+                    || (omp_override_only_edit && api.is_none())
             }
             _ => api.is_some_and(|value| {
                 crate::openclaw_config::OPENCLAW_API_PROTOCOLS.contains(&value)
             }),
         };
-        if !valid_api || !has_model {
+        if !valid_api || (!has_model && !omp_override_only_edit) {
             return Some(texts::tui_toast_provider_add_missing_fields());
         }
     }
@@ -1473,6 +1481,28 @@ mod tests {
             None
         );
         assert!(validate_provider_submit(&AppType::Pi, &provider, false, None).is_some());
+    }
+    #[test]
+    fn omp_edit_accepts_override_only_native_provider() {
+        let provider: Provider = serde_json::from_value(json!({
+            "id": "proxy",
+            "name": "Proxy",
+            "settingsConfig": {
+                "discovery": { "type": "proxy" },
+                "modelOverrides": { "model": { "baseUrl": "https://model.example" } }
+            }
+        }))
+        .expect("provider");
+
+        assert_eq!(
+            validate_provider_submit(
+                &AppType::Omp,
+                &provider,
+                true,
+                Some(&provider.settings_config),
+            ),
+            None
+        );
     }
 
     struct EnvGuard {

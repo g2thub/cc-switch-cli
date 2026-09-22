@@ -9,6 +9,24 @@ enum ProviderValidationTarget {
     UsageScript,
 }
 
+fn is_omp_override_only_edit(provider: &form::ProviderAddFormState) -> bool {
+    if !matches!(provider.app_type, crate::app_config::AppType::Omp)
+        || !provider.mode.is_edit()
+        || !provider.openclaw_models.is_empty()
+    {
+        return false;
+    }
+
+    provider
+        .initial_pi_settings_config()
+        .is_some_and(|settings| {
+            !settings
+                .get("models")
+                .and_then(Value::as_array)
+                .is_some_and(|models| !models.is_empty())
+        })
+}
+
 impl App {
     pub(super) fn handle_provider_focus_key(
         &mut self,
@@ -56,6 +74,8 @@ impl App {
             if let Some(message) = provider.usage_query_script_validation_error() {
                 provider.set_usage_query_field_error(form::UsageQueryField::Script, message);
             }
+            let omp_override_only_edit = is_omp_override_only_edit(provider);
+
             let hermes_base_url_error =
                 matches!(provider.app_type, crate::app_config::AppType::Hermes)
                     .then(|| validate_hermes_base_url(&provider.hermes_base_url.value))
@@ -90,6 +110,7 @@ impl App {
                 crate::app_config::AppType::Pi | crate::app_config::AppType::Omp
             ) && (!provider.mode.is_edit()
                 || matches!(provider.app_type, crate::app_config::AppType::Omp))
+                && !omp_override_only_edit
                 && !crate::pi_config::is_valid_request_url(&provider.current_provider_base_url())
             {
                 Some((
@@ -101,6 +122,8 @@ impl App {
                 crate::app_config::AppType::Pi | crate::app_config::AppType::Omp
             ) && (!provider.mode.is_edit()
                 || matches!(provider.app_type, crate::app_config::AppType::Omp))
+                && !(omp_override_only_edit
+                    && provider.opencode_npm_package.value.trim().is_empty())
                 && (match provider.app_type {
                     crate::app_config::AppType::Omp => !crate::omp_config::OMP_API_PROTOCOLS
                         .contains(&provider.opencode_npm_package.value.trim()),
@@ -117,6 +140,7 @@ impl App {
                 crate::app_config::AppType::Pi | crate::app_config::AppType::Omp
             ) && (!provider.mode.is_edit()
                 || matches!(provider.app_type, crate::app_config::AppType::Omp))
+                && !omp_override_only_edit
                 && !provider.openclaw_models.iter().any(|model| {
                     model
                         .get("id")
