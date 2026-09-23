@@ -16,6 +16,7 @@ impl McpService {
             AppType::Gemini,
             AppType::OpenCode,
             AppType::Hermes,
+            AppType::Omp,
         ]
         .into_iter()
     }
@@ -216,8 +217,10 @@ impl McpService {
             AppType::Hermes => {
                 mcp::sync_single_server_to_hermes(cfg, &server.id, &server.server)?;
             }
-            AppType::OpenClaw => {}
-            AppType::Pi | AppType::Omp => {}
+            AppType::Omp => {
+                mcp::sync_single_server_to_omp(cfg, &server.id, &server.server)?;
+            }
+            AppType::OpenClaw | AppType::Pi => {}
         }
         Ok(())
     }
@@ -242,8 +245,8 @@ impl McpService {
             AppType::Gemini => mcp::remove_server_from_gemini(id)?,
             AppType::OpenCode => mcp::remove_server_from_opencode(id)?,
             AppType::Hermes => mcp::remove_server_from_hermes(id)?,
-            AppType::OpenClaw => {}
-            AppType::Pi | AppType::Omp => {}
+            AppType::Omp => mcp::remove_server_from_omp(id)?,
+            AppType::OpenClaw | AppType::Pi => {}
         }
         Ok(())
     }
@@ -390,6 +393,15 @@ impl McpService {
         Ok(count)
     }
 
+    /// 从 OMP 导入 MCP
+    pub fn import_from_omp(state: &AppState) -> Result<usize, AppError> {
+        let mut cfg = state.config.write()?;
+        let count = mcp::import_from_omp(&mut cfg)?;
+        drop(cfg);
+        state.save()?;
+        Ok(count)
+    }
+
     pub fn import_from_supported_apps(state: &AppState) -> Result<usize, AppError> {
         let mut total = 0;
         total += Self::import_from_claude(state)?;
@@ -397,6 +409,7 @@ impl McpService {
         total += Self::import_from_gemini(state)?;
         total += Self::import_from_opencode(state)?;
         total += Self::import_from_hermes(state)?;
+        total += Self::import_from_omp(state)?;
         Ok(total)
     }
 }

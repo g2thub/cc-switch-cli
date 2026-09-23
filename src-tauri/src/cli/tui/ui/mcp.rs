@@ -22,7 +22,6 @@ pub(super) fn render_mcp(
     theme: &super::theme::Theme,
 ) {
     let visible = mcp_rows_filtered(app, data);
-
     let header = Row::new(vec![
         Cell::from(texts::header_name()),
         Cell::from(crate::app_config::AppType::Claude.as_str()),
@@ -30,6 +29,7 @@ pub(super) fn render_mcp(
         Cell::from(crate::app_config::AppType::Gemini.as_str()),
         Cell::from(crate::app_config::AppType::OpenCode.as_str()),
         Cell::from(crate::app_config::AppType::Hermes.as_str()),
+        Cell::from("omp"),
     ])
     .style(Style::default().fg(theme.dim).add_modifier(Modifier::BOLD));
 
@@ -61,36 +61,29 @@ pub(super) fn render_mcp(
             } else {
                 texts::tui_marker_inactive()
             }),
+            Cell::from(if row.server.apps.omp {
+                texts::tui_marker_active()
+            } else {
+                texts::tui_marker_inactive()
+            }),
         ])
     });
 
     let keys = crate::cli::tui::keymap::mcp::key_bar_items(app, data);
+    let count = |enabled: fn(&crate::app_config::McpApps) -> bool| {
+        data.mcp
+            .rows
+            .iter()
+            .filter(|row| enabled(&row.server.apps))
+            .count()
+    };
     let summary = texts::tui_mcp_server_counts(
-        data.mcp
-            .rows
-            .iter()
-            .filter(|row| row.server.apps.claude)
-            .count(),
-        data.mcp
-            .rows
-            .iter()
-            .filter(|row| row.server.apps.codex)
-            .count(),
-        data.mcp
-            .rows
-            .iter()
-            .filter(|row| row.server.apps.gemini)
-            .count(),
-        data.mcp
-            .rows
-            .iter()
-            .filter(|row| row.server.apps.opencode)
-            .count(),
-        data.mcp
-            .rows
-            .iter()
-            .filter(|row| row.server.apps.hermes)
-            .count(),
+        count(|apps| apps.claude),
+        count(|apps| apps.codex),
+        count(|apps| apps.gemini),
+        count(|apps| apps.opencode),
+        count(|apps| apps.hermes),
+        count(|apps| apps.omp),
     );
     let body = render_page_frame(
         frame,
@@ -111,6 +104,7 @@ pub(super) fn render_mcp(
             Constraint::Length(8),
             Constraint::Length(10),
             Constraint::Length(8),
+            Constraint::Length(8),
         ],
     )
     .header(header)
@@ -128,9 +122,7 @@ pub(super) fn render_mcp(
         );
         return;
     }
-
     let mut state = TableState::default();
     state.select(Some(app.mcp_idx));
-
     frame.render_stateful_widget(table, inset_left(body, CONTENT_INSET_LEFT), &mut state);
 }

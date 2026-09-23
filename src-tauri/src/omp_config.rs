@@ -44,6 +44,19 @@ pub(crate) fn get_omp_agent_dir() -> Result<PathBuf, AppError> {
     )
 }
 
+/// Ensure default OMP user directory exists for live configuration writes.
+pub(crate) fn ensure_private_omp_parent() -> Result<PathBuf, AppError> {
+    let path = get_home_dir().join(".omp").join("agent");
+    fs::create_dir_all(&path).map_err(|error| AppError::io(&path, error))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o700))
+            .map_err(|error| AppError::io(&path, error))?;
+    }
+    Ok(path)
+}
+
 fn resolve_omp_agent_dir(
     settings_override: Option<PathBuf>,
     env_override: Option<std::ffi::OsString>,

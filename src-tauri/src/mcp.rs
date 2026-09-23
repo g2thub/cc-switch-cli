@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 use std::collections::HashMap;
 
 use crate::app_config::{AppType, McpConfig, MultiAppConfig};
@@ -395,6 +395,7 @@ pub fn import_from_claude(config: &mut MultiAppConfig) -> Result<usize, AppError
                         gemini: false,
                         opencode: false,
                         hermes: false,
+                        omp: false,
                     },
                     description: None,
                     homepage: None,
@@ -623,6 +624,7 @@ pub fn import_from_codex(config: &mut MultiAppConfig) -> Result<usize, AppError>
                             gemini: false,
                             opencode: false,
                             hermes: false,
+                            omp: false,
                         },
                         description: None,
                         homepage: None,
@@ -786,6 +788,7 @@ pub fn import_from_gemini(config: &mut MultiAppConfig) -> Result<usize, AppError
                         gemini: true,
                         opencode: false,
                         hermes: false,
+                        omp: false,
                     },
                     description: None,
                     homepage: None,
@@ -955,6 +958,7 @@ pub fn import_from_opencode(config: &mut MultiAppConfig) -> Result<usize, AppErr
                         gemini: false,
                         opencode: true,
                         hermes: false,
+                        omp: false,
                     },
                     description: None,
                     homepage: None,
@@ -1690,6 +1694,7 @@ pub fn import_from_hermes(config: &mut MultiAppConfig) -> Result<usize, AppError
                         gemini: false,
                         opencode: false,
                         hermes: true,
+                        omp: false,
                     },
                     description: None,
                     homepage: None,
@@ -1710,6 +1715,139 @@ pub fn import_from_hermes(config: &mut MultiAppConfig) -> Result<usize, AppError
         );
     }
 
+    Ok(changed)
+}
+
+const OMP_MCP_SCHEMA: &str = "https://raw.githubusercontent.com/can1357/oh-my-pi/main/packages/coding-agent/src/config/mcp-schema.json";
+
+fn omp_mcp_path() -> std::path::PathBuf {
+    crate::config::get_home_dir().join(".omp/agent/mcp.json")
+}
+
+fn read_omp_mcp_file(path: &std::path::Path) -> Result<Option<Value>, AppError> {
+    let text = match std::fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(AppError::io(path, error)),
+    };
+    serde_json::from_str(&text)
+        .map(Some)
+        .map_err(|error| AppError::json(path, error))
+}
+
+fn omp_root_object(value: Value, path: &std::path::Path) -> Result<Map<String, Value>, AppError> {
+    value.as_object().cloned().ok_or_else(|| {
+        AppError::McpValidation(format!(
+            "OMP MCP config root must be an object: {}",
+            path.display()
+        ))
+    })
+}
+
+fn write_omp_mcp_file(path: &std::path::Path, root: &Map<String, Value>) -> Result<(), AppError> {
+    let bytes =
+        serde_json::to_vec_pretty(root).map_err(|source| AppError::JsonSerialize { source })?;
+    crate::config::atomic_write_private(path, &bytes)
+}
+
+pub fn sync_single_server_to_omp(
+    _config: &MultiAppConfig,
+    id: &str,
+    server_spec: &Value,
+) -> Result<(), AppError> {
+    if !crate::sync_policy::should_sync_live(&AppType::Omp) {
+        return Ok(());
+    }
+    validate_server_spec(server_spec)?;
+    let agent_dir = crate::omp_config::ensure_private_omp_parent()?;
+    let path = agent_dir.join("mcp.json");
+    let mut root = match read_omp_mcp_file(&path)? {
+        Some(value) => omp_root_object(value, &path)?,
+        None => Map::from_iter([
+            (
+                "$schema".to_string(),
+                Value::String(OMP_MCP_SCHEMA.to_string()),
+            ),
+            ("mcpServers".to_string(), Value::Object(Map::new())),
+        ]),
+    };
+    let servers = root
+        .entry("mcpServers".to_string())
+        .or_insert_with(|| Value::Object(Map::new()))
+        .as_object_mut()
+        .ok_or_else(|| AppError::McpValidation("OMP mcpServers must be an object".into()))?;
+    servers.insert(id.to_string(), server_spec.clone());
+    write_omp_mcp_file(&path, &root)
+}
+
+pub fn remove_server_from_omp(id: &str) -> Result<(), AppError> {
+    if !crate::sync_policy::should_sync_live(&AppType::Omp) {
+        return Ok(());
+    }
+    let path = omp_mcp_path();
+    let Some(value) = read_omp_mcp_file(&path)? else {
+        return Ok(());
+    };
+    let mut root = omp_root_object(value, &path)?;
+    let Some(servers) = root.get_mut("mcpServers") else {
+        return Ok(());
+    };
+    let servers = servers
+        .as_object_mut()
+        .ok_or_else(|| AppError::McpValidation("OMP mcpServers must be an object".into()))?;
+    if servers.remove(id).is_none() {
+        return Ok(());
+    }
+    write_omp_mcp_file(&path, &root)
+}
+
+pub fn import_from_omp(config: &mut MultiAppConfig) -> Result<usize, AppError> {
+    use crate::app_config::{McpApps, McpServer};
+
+    let path = omp_mcp_path();
+    let Some(value) = read_omp_mcp_file(&path)? else {
+        return Ok(0);
+    };
+    let Some(root) = value.as_object() else {
+        return Ok(0);
+    };
+    let Some(map) = root.get("mcpServers").and_then(Value::as_object) else {
+        return Ok(0);
+    };
+    if config.mcp.servers.is_none() {
+        config.mcp.servers = Some(HashMap::new());
+    }
+    let servers = config.mcp.servers.as_mut().expect("initialized above");
+    let mut changed = 0;
+    for (id, spec) in map {
+        if let Err(error) = validate_server_spec(spec) {
+            log::warn!("跳过无效 OMP MCP 服务器 '{id}': {error}");
+            continue;
+        }
+        if let Some(existing) = servers.get_mut(id) {
+            if !existing.apps.omp {
+                existing.apps.omp = true;
+                changed += 1;
+            }
+            continue;
+        }
+        let mut apps = McpApps::default();
+        apps.omp = true;
+        servers.insert(
+            id.clone(),
+            McpServer {
+                id: id.clone(),
+                name: id.clone(),
+                server: spec.clone(),
+                apps,
+                description: None,
+                homepage: None,
+                docs: None,
+                tags: Vec::new(),
+            },
+        );
+        changed += 1;
+    }
     Ok(changed)
 }
 
@@ -1984,5 +2122,53 @@ mod hermes_mcp_tests {
         assert_eq!(merged["url"], "https://mcp.example.com/updated");
         assert_eq!(merged["headers"]["X-Trace"], "abc");
         assert_eq!(merged["auth"], "oauth");
+    }
+}
+
+#[cfg(test)]
+mod omp_mcp_tests {
+    use super::*;
+    use crate::test_support::TestEnvGuard;
+    use serde_json::json;
+    use serial_test::serial;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    #[serial(home_settings)]
+    fn omp_mcp_upsert_and_remove_preserve_unrelated_config() {
+        let home = TempDir::new().expect("create temp home");
+        let _env = TestEnvGuard::isolated(home.path());
+        let agent_dir = home.path().join(".omp/agent");
+        fs::create_dir_all(&agent_dir).expect("create OMP agent dir");
+        let path = agent_dir.join("mcp.json");
+        let original = json!({
+            "$schema": "https://example.test/mcp-schema.json",
+            "mcpServers": {"keep": {"command": "keep"}},
+            "disabledServers": ["disabled"],
+            "extra": {"preserve": true}
+        });
+        fs::write(&path, serde_json::to_vec_pretty(&original).unwrap()).unwrap();
+
+        let spec = json!({"type": "stdio", "command": "added", "args": ["--x"]});
+        sync_single_server_to_omp(&MultiAppConfig::default(), "added", &spec).unwrap();
+        let after_upsert: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        assert_eq!(after_upsert["mcpServers"]["added"], spec);
+        assert_eq!(
+            after_upsert["mcpServers"]["keep"],
+            original["mcpServers"]["keep"]
+        );
+        assert_eq!(after_upsert["disabledServers"], original["disabledServers"]);
+        assert_eq!(after_upsert["extra"], original["extra"]);
+
+        remove_server_from_omp("added").unwrap();
+        let after_remove: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        assert!(after_remove["mcpServers"].get("added").is_none());
+        assert_eq!(
+            after_remove["mcpServers"]["keep"],
+            original["mcpServers"]["keep"]
+        );
+        assert_eq!(after_remove["$schema"], original["$schema"]);
+        assert_eq!(after_remove["extra"], original["extra"]);
     }
 }

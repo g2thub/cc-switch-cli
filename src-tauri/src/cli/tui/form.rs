@@ -508,6 +508,7 @@ pub enum McpAddField {
     AppGemini,
     AppOpenCode,
     AppHermes,
+    AppOmp,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

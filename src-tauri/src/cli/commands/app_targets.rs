@@ -4,12 +4,12 @@ use crate::app_config::AppType;
 use crate::error::AppError;
 
 pub(crate) fn supported_app_target_labels() -> &'static str {
-    "claude, codex, gemini, opencode, hermes, pi"
+    "claude, codex, gemini, opencode, hermes, pi, omp"
 }
 
 fn supported_app_target_labels_for(feature: &str) -> &'static str {
     if feature.eq_ignore_ascii_case("MCP") {
-        "claude, codex, gemini, opencode, hermes"
+        "claude, codex, gemini, opencode, hermes, omp"
     } else {
         supported_app_target_labels()
     }
@@ -72,23 +72,21 @@ fn parse_app_target(value: &str, feature: &str) -> Result<AppType, AppError> {
             supported_app_target_labels_for(feature)
         )));
     }
-    if matches!(app, AppType::Omp) {
-        return Err(AppError::InvalidInput(format!(
-            "{feature} does not support omp. Supported apps: {}",
-            supported_app_target_labels_for(feature)
-        )));
-    }
-
     if matches!(app, AppType::Pi) && feature.eq_ignore_ascii_case("MCP") {
         return Err(AppError::InvalidInput(format!(
             "{feature} does not support pi. Supported apps: {}",
             supported_app_target_labels_for(feature)
         )));
     }
+    if matches!(app, AppType::Omp) && !feature.eq_ignore_ascii_case("MCP") {
+        return Err(AppError::InvalidInput(format!(
+            "{feature} does not support omp. Supported apps: {}",
+            supported_app_target_labels_for(feature)
+        )));
+    }
 
     Ok(app)
 }
-
 pub(crate) fn app_target_names(apps: &[AppType]) -> String {
     apps.iter()
         .map(AppType::as_str)
@@ -145,11 +143,17 @@ mod tests {
     }
 
     #[test]
+    fn parse_app_targets_accepts_omp_for_mcp() {
+        assert_eq!(
+            parse_app_targets(&["omp".to_string()], "MCP").expect("OMP MCP target"),
+            vec![AppType::Omp]
+        );
+    }
+
+    #[test]
     fn parse_app_targets_rejects_omp_for_resource_features() {
-        for feature in ["MCP", "Skills"] {
-            let error = parse_app_targets(&["omp".to_string()], feature)
-                .expect_err("OMP must not be a resource target");
-            assert!(error.to_string().contains("does not support omp"));
-        }
+        let error = parse_app_targets(&["omp".to_string()], "Skills")
+            .expect_err("OMP must not be a Skills target");
+        assert!(error.to_string().contains("does not support omp"));
     }
 }

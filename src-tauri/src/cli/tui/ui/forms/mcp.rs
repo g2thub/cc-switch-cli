@@ -266,6 +266,7 @@ fn mcp_preview_value(mcp: &super::form::McpAddFormState) -> Value {
             "gemini": mcp.apps.gemini,
             "opencode": mcp.apps.opencode,
             "hermes": mcp.apps.hermes,
+            "omp": mcp.apps.omp,
         }),
     );
     Value::Object(root)
@@ -387,6 +388,7 @@ pub(crate) fn mcp_field_label_and_value(
         McpAddField::AppGemini => texts::tui_label_app_gemini().to_string(),
         McpAddField::AppOpenCode => texts::tui_label_app_opencode().to_string(),
         McpAddField::AppHermes => texts::tui_label_app_hermes().to_string(),
+        McpAddField::AppOmp => "OMP".to_string(),
     };
 
     let value = match field {
@@ -426,6 +428,13 @@ pub(crate) fn mcp_field_label_and_value(
         }
         McpAddField::AppHermes => {
             if mcp.apps.hermes {
+                format!("[{}]", texts::tui_marker_active())
+            } else {
+                "[ ]".to_string()
+            }
+        }
+        McpAddField::AppOmp => {
+            if mcp.apps.omp {
                 format!("[{}]", texts::tui_marker_active())
             } else {
                 "[ ]".to_string()
@@ -501,7 +510,8 @@ fn mcp_add_form_key_items(
                         | McpAddField::AppCodex
                         | McpAddField::AppGemini
                         | McpAddField::AppOpenCode
-                        | McpAddField::AppHermes,
+                        | McpAddField::AppHermes
+                        | McpAddField::AppOmp,
                     ) => texts::tui_key_toggle(),
                     _ => texts::tui_key_edit_mode(),
                 };

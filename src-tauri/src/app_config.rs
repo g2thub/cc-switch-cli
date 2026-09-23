@@ -17,6 +17,8 @@ pub struct McpApps {
     pub opencode: bool,
     #[serde(default)]
     pub hermes: bool,
+    #[serde(default)]
+    pub omp: bool,
 }
 
 impl McpApps {
@@ -28,11 +30,10 @@ impl McpApps {
             AppType::Gemini => self.gemini,
             AppType::OpenCode => self.opencode,
             AppType::Hermes => self.hermes,
-            AppType::OpenClaw => false,
-            AppType::Pi | AppType::Omp => false,
+            AppType::Omp => self.omp,
+            AppType::OpenClaw | AppType::Pi => false,
         }
     }
-
     /// 设置指定应用的启用状态
     pub fn set_enabled_for(&mut self, app: &AppType, enabled: bool) {
         match app {
@@ -41,8 +42,8 @@ impl McpApps {
             AppType::Gemini => self.gemini = enabled,
             AppType::OpenCode => self.opencode = enabled,
             AppType::Hermes => self.hermes = enabled,
-            AppType::OpenClaw => {}
-            AppType::Pi | AppType::Omp => {}
+            AppType::Omp => self.omp = enabled,
+            AppType::OpenClaw | AppType::Pi => {}
         }
     }
 
@@ -64,12 +65,15 @@ impl McpApps {
         if self.hermes {
             apps.push(AppType::Hermes);
         }
+        if self.omp {
+            apps.push(AppType::Omp);
+        }
         apps
     }
 
     /// 检查是否所有应用都未启用
     pub fn is_empty(&self) -> bool {
-        !self.claude && !self.codex && !self.gemini && !self.opencode && !self.hermes
+        !self.claude && !self.codex && !self.gemini && !self.opencode && !self.hermes && !self.omp
     }
 }
 

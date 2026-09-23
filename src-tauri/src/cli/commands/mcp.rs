@@ -73,11 +73,6 @@ pub fn execute(cmd: McpCommand, app: Option<AppType>) -> Result<(), AppError> {
             "Pi does not support MCP management".to_string(),
         ));
     }
-    if matches!(app_type, AppType::Omp) {
-        return Err(AppError::InvalidInput(
-            "OMP does not support MCP management".to_string(),
-        ));
-    }
 
     match cmd {
         McpCommand::List => list_servers(app_type),
@@ -110,7 +105,7 @@ fn list_servers(app_type: AppType) -> Result<(), AppError> {
     // 创建表格
     let mut table = create_table();
     table.set_header(vec![
-        "ID", "Name", "Claude", "Codex", "Gemini", "OpenCode", "Hermes", "Tags",
+        "ID", "Name", "Claude", "Codex", "Gemini", "OpenCode", "Hermes", "OMP", "Tags",
     ]);
 
     // 按 ID 排序
@@ -123,6 +118,7 @@ fn list_servers(app_type: AppType) -> Result<(), AppError> {
         let gemini_marker = if server.apps.gemini { "✓" } else { " " };
         let opencode_marker = if server.apps.opencode { "✓" } else { " " };
         let hermes_marker = if server.apps.hermes { "✓" } else { " " };
+        let omp_marker = if server.apps.omp { "✓" } else { " " };
         let tags = server.tags.join(", ");
 
         let row = vec![
@@ -133,6 +129,7 @@ fn list_servers(app_type: AppType) -> Result<(), AppError> {
             gemini_marker.to_string(),
             opencode_marker.to_string(),
             hermes_marker.to_string(),
+            omp_marker.to_string(),
             tags,
         ];
 
@@ -190,6 +187,7 @@ fn delete_server(id: &str) -> Result<(), AppError> {
         } else {
             None
         },
+        if server.apps.omp { Some("OMP") } else { None },
     ]
     .into_iter()
     .flatten()
@@ -480,13 +478,6 @@ mod tests {
             assert!(matches!(
                 error,
                 AppError::InvalidInput(message) if message == "Pi does not support MCP management"
-            ));
-        }
-        for command in [McpCommand::List, McpCommand::Sync, McpCommand::Import] {
-            let error = execute(command, Some(AppType::Omp)).expect_err("OMP MCP must be rejected");
-            assert!(matches!(
-                error,
-                AppError::InvalidInput(message) if message == "OMP does not support MCP management"
             ));
         }
     }

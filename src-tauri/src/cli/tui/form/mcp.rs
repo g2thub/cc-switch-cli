@@ -245,6 +245,7 @@ impl McpAddFormState {
             McpAddField::AppGemini,
             McpAddField::AppOpenCode,
             McpAddField::AppHermes,
+            McpAddField::AppOmp,
         ]);
 
         fields
@@ -264,7 +265,8 @@ impl McpAddFormState {
             | McpAddField::AppCodex
             | McpAddField::AppGemini
             | McpAddField::AppOpenCode
-            | McpAddField::AppHermes => None,
+            | McpAddField::AppHermes
+            | McpAddField::AppOmp => None,
         }
     }
 
@@ -282,7 +284,8 @@ impl McpAddFormState {
             | McpAddField::AppCodex
             | McpAddField::AppGemini
             | McpAddField::AppOpenCode
-            | McpAddField::AppHermes => None,
+            | McpAddField::AppHermes
+            | McpAddField::AppOmp => None,
         }
     }
 

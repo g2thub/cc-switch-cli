@@ -1765,8 +1765,28 @@ pub(crate) fn app_type_picker_index(app_type: &AppType) -> usize {
     }
 }
 
-pub(crate) fn four_app_picker_index(app_type: &AppType) -> usize {
-    app_type_picker_index(app_type).min(4)
+
+pub(crate) fn mcp_app_picker_index(app_type: &AppType) -> usize {
+    match app_type {
+        AppType::Claude => 0,
+        AppType::Codex => 1,
+        AppType::Gemini => 2,
+        AppType::OpenCode => 3,
+        AppType::Hermes => 4,
+        AppType::Omp => 5,
+        AppType::OpenClaw | AppType::Pi => 4,
+    }
+}
+
+pub(crate) fn mcp_app_type_for_picker_index(index: usize) -> AppType {
+    match index {
+        1 => AppType::Codex,
+        2 => AppType::Gemini,
+        3 => AppType::OpenCode,
+        4 => AppType::Hermes,
+        5 => AppType::Omp,
+        _ => AppType::Claude,
+    }
 }
 
 pub(crate) fn skills_app_picker_index(app_type: &AppType) -> usize {

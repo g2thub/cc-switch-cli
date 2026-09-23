@@ -5909,14 +5909,15 @@ pub mod texts {
         gemini: usize,
         opencode: usize,
         hermes: usize,
+        omp: usize,
     ) -> String {
         if is_chinese() {
             format!(
-                "已安装 · Claude: {claude} · Codex: {codex} · Gemini: {gemini} · OpenCode: {opencode} · Hermes: {hermes}"
+                "已安装 · Claude: {claude} · Codex: {codex} · Gemini: {gemini} · OpenCode: {opencode} · Hermes: {hermes} · OMP: {omp}"
             )
         } else {
             format!(
-                "Installed · Claude: {claude} · Codex: {codex} · Gemini: {gemini} · OpenCode: {opencode} · Hermes: {hermes}"
+                "Installed · Claude: {claude} · Codex: {codex} · Gemini: {gemini} · OpenCode: {opencode} · Hermes: {hermes} · OMP: {omp}"
             )
         }
     }

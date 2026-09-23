@@ -426,7 +426,7 @@ impl App {
                 self.overlay = Overlay::McpAppsPicker {
                     id: row.id.clone(),
                     name: row.server.name.clone(),
-                    selected: four_app_picker_index(&self.app_type),
+                    selected: mcp_app_picker_index(&self.app_type),
                     apps: row.server.apps.clone(),
                 };
                 Action::None

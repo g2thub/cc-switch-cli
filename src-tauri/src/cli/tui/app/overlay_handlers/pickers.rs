@@ -1657,11 +1657,11 @@ impl App {
                 Action::None
             }
             KeyCode::Down => {
-                *selected = (*selected + 1).min(4);
+                *selected = (*selected + 1).min(5);
                 Action::None
             }
             KeyCode::Char(' ') => {
-                let app_type = app_type_for_picker_index(*selected);
+                let app_type = mcp_app_type_for_picker_index(*selected);
                 let enabled = apps.is_enabled_for(&app_type);
                 apps.set_enabled_for(&app_type, !enabled);
                 Action::None
